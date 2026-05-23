@@ -1,12 +1,10 @@
 <p align="center">
-  <img src="kubilitics-frontend/public/brand/logo-transparent.png" alt="Kubilitics" height="80" />
+  <img src="kubilitics-frontend/public/brand/logo.png" alt="Kubilitics" height="120" />
 </p>
-
-<h1 align="center">Kubilitics</h1>
 
 <p align="center">
   <strong>The Kubernetes Operating System</strong><br />
-  Multi-cluster management, real-time topology, powerful CLI operations — all from one platform.
+  Multi-cluster management · Real-time topology · 55 AI tools · Powerful CLI — all from one platform.
 </p>
 
 <p align="center">
@@ -18,13 +16,13 @@
 
 <p align="center">
   <a href="#%EF%B8%8F-desktop-app-download">Desktop App</a> •
+  <a href="#-app-screens">Screens</a> •
   <a href="#%EF%B8%8F-helm-deployment-in-cluster">Helm Deploy</a> •
   <a href="#-features">Features</a> •
   <a href="#-ai-tools-cheatsheet">AI Tools</a> •
   <a href="#-comparison">Comparison</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-documentation">Docs</a> •
-  <a href="#-development">Development</a>
+  <a href="#-architecture-1">Architecture</a> •
+  <a href="#-documentation">Docs</a>
 </p>
 
 ---
@@ -38,6 +36,34 @@
 | Headlamp lacks multi-cluster | **True multi-cluster** — switch between Docker Desktop, EKS, AKS, GKE in one click |
 | CLI is disconnected | **Integrated CLI** — kcli (kubectl wrapper) with cluster context management and blast radius analysis |
 | Topology is afterthought | **Topology-first** — 5 view modes, semantic zoom, relationship inference, export to PNG, SVG, JSON, CSV |
+
+---
+
+## 🏛️ Architecture
+
+![Kubilitics Architecture](docs/assets/architecture.svg)
+
+---
+
+## 📸 App Screens
+
+> **To view all 8 interactive screens:** open [`docs/assets/app-screens.html`](docs/assets/app-screens.html) in your browser. Each screen is 1280×800 and matches the real production UI.
+
+**Cluster Dashboard** — health score, resource gauges, event feed, namespace breakdown
+
+**Fleet Overview** — all clusters at a glance with provider badges, health scores, and instant context-switching
+
+**Topology View** — 5 view modes (Cluster / Namespace / Workload / RBAC / Resource-Centric) with export to PNG, SVG, JSON, CSV
+
+**Workloads Table** — all deployments with real-time CPU/memory bars, status badges, and one-click inspect/topology
+
+**Pod Detail** — containers, liveness probes, restart history, events, logs, metrics, YAML in one tabbed view
+
+**AI Chat** (`⌘I`) — 55 MCP tools running live inside a chat panel; tool call blocks, safety confirmations, cluster-scoped context
+
+**Events Stream** — 1,500+ events with type/reason/namespace filters and severity coloring
+
+**Blast Radius** — select any resource, see exactly what breaks and what gets disrupted, with AI-recommended safer paths
 
 ---
 
@@ -235,41 +261,6 @@ Export: PNG, SVG, JSON, CSV
 ---
 
 ## 🏗️ Architecture
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                         KUBILITICS                                │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│   ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│   │  Desktop     │  │  Web App     │  │  In-Cluster (Helm)   │  │
-│   │  Tauri 2.0   │  │  React+Vite  │  │  K8s Deployment      │  │
-│   └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘  │
-│          │                  │                      │               │
-│          └──────────────────┼──────────────────────┘               │
-│                             │                                      │
-│                    ┌────────▼────────┐                             │
-│                    │   Go Backend    │  REST API + WebSocket       │
-│                    │   Port 8190    │  SQLite / PostgreSQL        │
-│                    └────────┬────────┘                             │
-│                             │                                      │
-│              ┌──────────────┼──────────────┐                      │
-│              │              │              │                       │
-│     ┌────────▼──────┐ ┌────▼─────┐                               │
-│     │  Topology     │ │  K8s     │                               │
-│     │  Engine       │ │  Client  │                               │
-│     │  (ELK+React   │ │  (client │                               │
-│     │   Flow)       │ │   -go)   │                               │
-│     └───────────────┘ └────┬─────┘                               │
-│                             │                                      │
-│                    ┌────────▼────────┐                             │
-│                    │  Kubernetes     │                             │
-│                    │  Cluster(s)     │                             │
-│                    │  EKS / AKS /   │                             │
-│                    │  GKE / Docker   │                             │
-│                    └─────────────────┘                             │
-└──────────────────────────────────────────────────────────────────┘
-```
 
 ### Repository Structure
 

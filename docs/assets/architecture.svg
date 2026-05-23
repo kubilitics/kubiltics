@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="720" viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0D0E14;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#131520;stop-opacity:1"/>
+    </linearGradient>
+    <!-- Primary blue glow -->
+    <radialGradient id="blueGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#4D90F7;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#4D90F7;stop-opacity:0"/>
+    </radialGradient>
+    <!-- Purple glow -->
+    <radialGradient id="purpleGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:0.12"/>
+      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:0"/>
+    </radialGradient>
+    <!-- Card gradients -->
+    <linearGradient id="cardBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2035;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#141926;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="cardGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f2020;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#111a1a;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="cardPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1535;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#141126;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="cardAmber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1f1a0a;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#181408;stop-opacity:1"/>
+    </linearGradient>
+    <!-- Arrow marker -->
+    <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4D90F7" opacity="0.8"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22BE5C" opacity="0.8"/>
+    </marker>
+    <marker id="arrowMuted" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4D90F7" opacity="0.4"/>
+    </marker>
+    <!-- Drop shadow filter -->
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+    <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#4D90F7" flood-opacity="0.5"/>
+    </filter>
+    <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#22BE5C" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="720" fill="url(#bgGrad)"/>
+
+  <!-- Background ambient glows -->
+  <ellipse cx="200" cy="150" rx="300" ry="200" fill="url(#blueGlow)"/>
+  <ellipse cx="1000" cy="580" rx="280" ry="180" fill="url(#purpleGlow)"/>
+
+  <!-- Grid dots pattern -->
+  <pattern id="dots" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+    <circle cx="1" cy="1" r="0.8" fill="#ffffff" opacity="0.04"/>
+  </pattern>
+  <rect width="1200" height="720" fill="url(#dots)"/>
+
+  <!-- ═══════════════════════════════════════════════════
+       TITLE
+  ═══════════════════════════════════════════════════ -->
+  <!-- Logo mark SVG -->
+  <g transform="translate(48, 28)">
+    <!-- Hexagon outline -->
+    <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#4D90F7" stroke-width="2.5" stroke-linejoin="round"/>
+    <!-- House shape -->
+    <polyline points="13,13 20,7 27,13" fill="none" stroke="#4D90F7" stroke-width="2" stroke-linejoin="round"/>
+    <!-- Hub circle -->
+    <circle cx="20" cy="22" r="4" fill="none" stroke="#4D90F7" stroke-width="2"/>
+    <!-- Spokes -->
+    <line x1="20" y1="18" x2="20" y2="13" stroke="#4D90F7" stroke-width="1.8"/>
+    <line x1="23.5" y1="24" x2="27" y2="26" stroke="#4D90F7" stroke-width="1.8"/>
+    <line x1="16.5" y1="24" x2="13" y2="26" stroke="#4D90F7" stroke-width="1.8"/>
+    <line x1="20" y1="26" x2="20" y2="30" stroke="#4D90F7" stroke-width="1.8"/>
+  </g>
+  <text x="100" y="48" fill="#E8EAF0" font-size="20" font-weight="700" letter-spacing="0.5">KUBILITICS</text>
+  <text x="100" y="65" fill="#8F97AD" font-size="11" letter-spacing="0.3">Architecture — The Kubernetes Operating System</text>
+
+  <!-- Version badge -->
+  <rect x="1090" y="30" width="78" height="22" rx="11" fill="#4D90F7" opacity="0.2"/>
+  <rect x="1090" y="30" width="78" height="22" rx="11" fill="none" stroke="#4D90F7" stroke-width="1" opacity="0.5"/>
+  <text x="1129" y="45" fill="#4D90F7" font-size="11" font-weight="600" text-anchor="middle">v1.0.0 GA</text>
+
+  <!-- ═══════════════════════════════════════════════════
+       ROW 1 — THREE DEPLOYMENT MODES
+  ═══════════════════════════════════════════════════ -->
+  <text x="600" y="108" fill="#8F97AD" font-size="11" font-weight="500" text-anchor="middle" letter-spacing="1.5">DEPLOYMENT MODES</text>
+
+  <!-- Desktop App Card -->
+  <rect x="48" y="118" width="220" height="108" rx="12" fill="url(#cardBlue)" filter="url(#cardShadow)"/>
+  <rect x="48" y="118" width="220" height="108" rx="12" fill="none" stroke="#4D90F7" stroke-width="1" opacity="0.4"/>
+  <!-- Top accent line -->
+  <rect x="48" y="118" width="220" height="3" rx="1.5" fill="#4D90F7" opacity="0.8"/>
+  <!-- Icon -->
+  <rect x="68" y="134" width="28" height="28" rx="7" fill="#4D90F7" opacity="0.15"/>
+  <text x="82" y="153" fill="#4D90F7" font-size="14" text-anchor="middle">🖥</text>
+  <text x="108" y="143" fill="#E8EAF0" font-size="13" font-weight="600">Desktop App</text>
+  <text x="108" y="157" fill="#8F97AD" font-size="10">Tauri 2.0 (Rust)</text>
+  <!-- Pills -->
+  <rect x="68" y="168" width="42" height="16" rx="8" fill="#4D90F7" opacity="0.15"/>
+  <text x="89" y="179" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">macOS</text>
+  <rect x="116" y="168" width="40" height="16" rx="8" fill="#4D90F7" opacity="0.15"/>
+  <text x="136" y="179" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">Windows</text>
+  <rect x="162" y="168" width="32" height="16" rx="8" fill="#4D90F7" opacity="0.15"/>
+  <text x="178" y="179" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">Linux</text>
+  <text x="68" y="206" fill="#8F97AD" font-size="9.5">Sidecar backend · Auto-update · Offline</text>
+
+  <!-- Web App Card -->
+  <rect x="490" y="118" width="220" height="108" rx="12" fill="url(#cardBlue)" filter="url(#cardShadow)"/>
+  <rect x="490" y="118" width="220" height="108" rx="12" fill="none" stroke="#4D90F7" stroke-width="1" opacity="0.4"/>
+  <rect x="490" y="118" width="220" height="3" rx="1.5" fill="#4D90F7" opacity="0.8"/>
+  <rect x="510" y="134" width="28" height="28" rx="7" fill="#4D90F7" opacity="0.15"/>
+  <text x="524" y="153" fill="#4D90F7" font-size="14" text-anchor="middle">🌐</text>
+  <text x="550" y="143" fill="#E8EAF0" font-size="13" font-weight="600">Web App</text>
+  <text x="550" y="157" fill="#8F97AD" font-size="10">React 18 + Vite</text>
+  <rect x="510" y="168" width="50" height="16" rx="8" fill="#4D90F7" opacity="0.15"/>
+  <text x="535" y="179" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">Browser</text>
+  <rect x="566" y="168" width="36" height="16" rx="8" fill="#4D90F7" opacity="0.15"/>
+  <text x="584" y="179" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">Local</text>
+  <text x="510" y="206" fill="#8F97AD" font-size="9.5">React Query · Zustand · Framer Motion</text>
+
+  <!-- Helm / In-Cluster Card -->
+  <rect x="932" y="118" width="220" height="108" rx="12" fill="url(#cardGreen)" filter="url(#cardShadow)"/>
+  <rect x="932" y="118" width="220" height="108" rx="12" fill="none" stroke="#22BE5C" stroke-width="1" opacity="0.4"/>
+  <rect x="932" y="118" width="220" height="3" rx="1.5" fill="#22BE5C" opacity="0.8"/>
+  <rect x="952" y="134" width="28" height="28" rx="7" fill="#22BE5C" opacity="0.12"/>
+  <text x="966" y="153" fill="#22BE5C" font-size="14" text-anchor="middle">⎈</text>
+  <text x="992" y="143" fill="#E8EAF0" font-size="13" font-weight="600">Helm (In-Cluster)</text>
+  <text x="992" y="157" fill="#8F97AD" font-size="10">OCI · ghcr.io</text>
+  <rect x="952" y="168" width="42" height="16" rx="8" fill="#22BE5C" opacity="0.12"/>
+  <text x="973" y="179" fill="#22BE5C" font-size="9" font-weight="600" text-anchor="middle">EKS</text>
+  <rect x="1000" y="168" width="36" height="16" rx="8" fill="#22BE5C" opacity="0.12"/>
+  <text x="1018" y="179" fill="#22BE5C" font-size="9" font-weight="600" text-anchor="middle">AKS</text>
+  <rect x="1042" y="168" width="36" height="16" rx="8" fill="#22BE5C" opacity="0.12"/>
+  <text x="1060" y="179" fill="#22BE5C" font-size="9" font-weight="600" text-anchor="middle">GKE</text>
+  <text x="952" y="206" fill="#8F97AD" font-size="9.5">Team-wide access · Ingress · RBAC</text>
+
+  <!-- Connecting arrows down from deployment modes to backend -->
+  <line x1="158" y1="226" x2="390" y2="300" stroke="#4D90F7" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.5" marker-end="url(#arrowBlue)"/>
+  <line x1="600" y1="226" x2="600" y2="300" stroke="#4D90F7" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.5" marker-end="url(#arrowBlue)"/>
+  <line x1="1042" y1="226" x2="810" y2="300" stroke="#4D90F7" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.5" marker-end="url(#arrowBlue)"/>
+
+  <!-- Labels on arrows -->
+  <text x="265" y="274" fill="#4D90F7" font-size="9" opacity="0.7" text-anchor="middle">REST / WS</text>
+  <text x="600" y="274" fill="#4D90F7" font-size="9" opacity="0.7" text-anchor="middle">REST / WS</text>
+  <text x="935" y="274" fill="#4D90F7" font-size="9" opacity="0.7" text-anchor="middle">REST / WS</text>
+
+  <!-- ═══════════════════════════════════════════════════
+       ROW 2 — BACKEND CORE (CENTER)
+  ═══════════════════════════════════════════════════ -->
+  <text x="600" y="292" fill="#8F97AD" font-size="11" font-weight="500" text-anchor="middle" letter-spacing="1.5">CORE PLATFORM</text>
+
+  <!-- Backend Card (large, center) -->
+  <rect x="360" y="305" width="480" height="130" rx="14" fill="url(#cardBlue)" filter="url(#cardShadow)"/>
+  <rect x="360" y="305" width="480" height="130" rx="14" fill="none" stroke="#4D90F7" stroke-width="1.5" opacity="0.6"/>
+  <!-- Left accent bar -->
+  <rect x="360" y="305" width="4" height="130" rx="2" fill="#4D90F7"/>
+
+  <rect x="380" y="322" width="32" height="32" rx="9" fill="#4D90F7" opacity="0.15"/>
+  <text x="396" y="342" fill="#4D90F7" font-size="18" text-anchor="middle">⚙</text>
+  <text x="424" y="333" fill="#E8EAF0" font-size="15" font-weight="700">Go Backend</text>
+  <text x="424" y="349" fill="#8F97AD" font-size="10.5">Port 8190 · REST API + WebSocket · SQLite / PostgreSQL</text>
+
+  <!-- Backend sub-components -->
+  <!-- API Handlers -->
+  <rect x="380" y="365" width="96" height="54" rx="8" fill="rgba(77,144,247,0.08)"/>
+  <rect x="380" y="365" width="96" height="54" rx="8" fill="none" stroke="#4D90F7" stroke-width="0.8" opacity="0.4"/>
+  <text x="428" y="381" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">API Handlers</text>
+  <text x="428" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">REST · WebSocket</text>
+  <text x="428" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">Auth · RBAC</text>
+
+  <!-- Topology Engine -->
+  <rect x="486" y="365" width="96" height="54" rx="8" fill="rgba(77,144,247,0.08)"/>
+  <rect x="486" y="365" width="96" height="54" rx="8" fill="none" stroke="#4D90F7" stroke-width="0.8" opacity="0.4"/>
+  <text x="534" y="381" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">Topology Engine</text>
+  <text x="534" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">ELK Layout</text>
+  <text x="534" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">Graph Builder</text>
+
+  <!-- K8s Client -->
+  <rect x="592" y="365" width="96" height="54" rx="8" fill="rgba(77,144,247,0.08)"/>
+  <rect x="592" y="365" width="96" height="54" rx="8" fill="none" stroke="#4D90F7" stroke-width="0.8" opacity="0.4"/>
+  <text x="640" y="381" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">K8s Client</text>
+  <text x="640" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">client-go</text>
+  <text x="640" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">Multi-cluster</text>
+
+  <!-- Database -->
+  <rect x="698" y="365" width="96" height="54" rx="8" fill="rgba(77,144,247,0.08)"/>
+  <rect x="698" y="365" width="96" height="54" rx="8" fill="none" stroke="#4D90F7" stroke-width="0.8" opacity="0.4"/>
+  <text x="746" y="381" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">Persistence</text>
+  <text x="746" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">SQLite</text>
+  <text x="746" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">PostgreSQL</text>
+
+  <!-- AI Brain Card (left of backend) -->
+  <rect x="48" y="305" width="290" height="130" rx="14" fill="url(#cardPurple)" filter="url(#cardShadow)"/>
+  <rect x="48" y="305" width="290" height="130" rx="14" fill="none" stroke="#8B5CF6" stroke-width="1.2" opacity="0.5"/>
+  <rect x="48" y="305" width="4" height="130" rx="2" fill="#8B5CF6"/>
+
+  <rect x="68" y="322" width="32" height="32" rx="9" fill="#8B5CF6" opacity="0.15"/>
+  <text x="84" y="342" fill="#8B5CF6" font-size="18" text-anchor="middle">🧠</text>
+  <text x="112" y="333" fill="#E8EAF0" font-size="14" font-weight="700">AI Brain</text>
+  <text x="112" y="349" fill="#8F97AD" font-size="10">kotg.ai · LLM-agnostic · gRPC :50051</text>
+
+  <rect x="68" y="365" width="76" height="54" rx="8" fill="rgba(139,92,246,0.08)"/>
+  <rect x="68" y="365" width="76" height="54" rx="8" fill="none" stroke="#8B5CF6" stroke-width="0.8" opacity="0.4"/>
+  <text x="106" y="381" fill="#8B5CF6" font-size="9" font-weight="600" text-anchor="middle">55 MCP Tools</text>
+  <text x="106" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">Observe · Inspect</text>
+  <text x="106" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">Analyze · Execute</text>
+
+  <rect x="152" y="365" width="76" height="54" rx="8" fill="rgba(139,92,246,0.08)"/>
+  <rect x="152" y="365" width="76" height="54" rx="8" fill="none" stroke="#8B5CF6" stroke-width="0.8" opacity="0.4"/>
+  <text x="190" y="381" fill="#8B5CF6" font-size="9" font-weight="600" text-anchor="middle">Providers</text>
+  <text x="190" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">OpenAI · Claude</text>
+  <text x="190" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">Ollama</text>
+
+  <rect x="236" y="365" width="82" height="54" rx="8" fill="rgba(139,92,246,0.08)"/>
+  <rect x="236" y="365" width="82" height="54" rx="8" fill="none" stroke="#8B5CF6" stroke-width="0.8" opacity="0.4"/>
+  <text x="277" y="381" fill="#8B5CF6" font-size="9" font-weight="600" text-anchor="middle">Safety Engine</text>
+  <text x="277" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">Preflight</text>
+  <text x="277" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">Audit Log</text>
+
+  <!-- Arrow from AI Brain → Backend -->
+  <line x1="338" y1="370" x2="356" y2="370" stroke="#8B5CF6" stroke-width="1.5" opacity="0.6" marker-end="url(#arrowMuted)"/>
+  <text x="347" y="364" fill="#8B5CF6" font-size="8" opacity="0.7" text-anchor="middle">gRPC</text>
+
+  <!-- CLI Card (right of backend) -->
+  <rect x="862" y="305" width="290" height="130" rx="14" fill="url(#cardAmber)" filter="url(#cardShadow)"/>
+  <rect x="862" y="305" width="290" height="130" rx="14" fill="none" stroke="#F59E0B" stroke-width="1.2" opacity="0.5"/>
+  <rect x="862" y="305" width="4" height="130" rx="2" fill="#F59E0B"/>
+
+  <rect x="882" y="322" width="32" height="32" rx="9" fill="#F59E0B" opacity="0.12"/>
+  <text x="898" y="342" fill="#F59E0B" font-size="18" text-anchor="middle">⌨</text>
+  <text x="926" y="333" fill="#E8EAF0" font-size="14" font-weight="700">kcli</text>
+  <text x="926" y="349" fill="#8F97AD" font-size="10">kubectl wrapper · Context management</text>
+
+  <rect x="882" y="365" width="82" height="54" rx="8" fill="rgba(245,158,11,0.08)"/>
+  <rect x="882" y="365" width="82" height="54" rx="8" fill="none" stroke="#F59E0B" stroke-width="0.8" opacity="0.4"/>
+  <text x="923" y="381" fill="#F59E0B" font-size="9" font-weight="600" text-anchor="middle">Blast Radius</text>
+  <text x="923" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">Impact analysis</text>
+  <text x="923" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">before changes</text>
+
+  <rect x="972" y="365" width="82" height="54" rx="8" fill="rgba(245,158,11,0.08)"/>
+  <rect x="972" y="365" width="82" height="54" rx="8" fill="none" stroke="#F59E0B" stroke-width="0.8" opacity="0.4"/>
+  <text x="1013" y="381" fill="#F59E0B" font-size="9" font-weight="600" text-anchor="middle">Shell Terminal</text>
+  <text x="1013" y="394" fill="#8F97AD" font-size="8.5" text-anchor="middle">Tab completion</text>
+  <text x="1013" y="407" fill="#8F97AD" font-size="8.5" text-anchor="middle">In-browser</text>
+
+  <!-- Arrow from backend → CLI -->
+  <line x1="844" y1="370" x2="860" y2="370" stroke="#F59E0B" stroke-width="1.5" opacity="0.6" marker-end="url(#arrowMuted)"/>
+
+  <!-- Arrows from backend down to clusters -->
+  <line x1="520" y1="435" x2="340" y2="530" stroke="#22BE5C" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.6" marker-end="url(#arrowGreen)"/>
+  <line x1="580" y1="435" x2="520" y2="530" stroke="#22BE5C" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.6" marker-end="url(#arrowGreen)"/>
+  <line x1="640" y1="435" x2="680" y2="530" stroke="#22BE5C" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.6" marker-end="url(#arrowGreen)"/>
+  <line x1="700" y1="435" x2="860" y2="530" stroke="#22BE5C" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.6" marker-end="url(#arrowGreen)"/>
+
+  <text x="400" y="498" fill="#22BE5C" font-size="9" opacity="0.7" text-anchor="middle">client-go</text>
+  <text x="800" y="498" fill="#22BE5C" font-size="9" opacity="0.7" text-anchor="middle">kubeconfig</text>
+
+  <!-- ═══════════════════════════════════════════════════
+       ROW 3 — KUBERNETES CLUSTERS
+  ═══════════════════════════════════════════════════ -->
+  <text x="600" y="524" fill="#8F97AD" font-size="11" font-weight="500" text-anchor="middle" letter-spacing="1.5">KUBERNETES CLUSTERS</text>
+
+  <!-- Docker Desktop -->
+  <rect x="60" y="537" width="196" height="76" rx="10" fill="url(#cardGreen)" filter="url(#cardShadow)"/>
+  <rect x="60" y="537" width="196" height="76" rx="10" fill="none" stroke="#22BE5C" stroke-width="1" opacity="0.4"/>
+  <circle cx="90" cy="562" r="12" fill="#22BE5C" opacity="0.15"/>
+  <text x="90" y="567" fill="#22BE5C" font-size="12" text-anchor="middle">🐳</text>
+  <text x="116" y="557" fill="#E8EAF0" font-size="11" font-weight="600">Docker Desktop</text>
+  <text x="116" y="570" fill="#8F97AD" font-size="9.5">Local · Auto-detected</text>
+  <rect x="78" y="578" width="38" height="14" rx="7" fill="#22BE5C" opacity="0.15"/>
+  <text x="97" y="588" fill="#22BE5C" font-size="8.5" font-weight="600" text-anchor="middle">✓ Verified</text>
+  <rect x="122" y="578" width="50" height="14" rx="7" fill="#22BE5C" opacity="0.15"/>
+  <text x="147" y="588" fill="#22BE5C" font-size="8.5" font-weight="600" text-anchor="middle">Dev Tested</text>
+
+  <!-- AWS EKS -->
+  <rect x="276" y="537" width="196" height="76" rx="10" fill="url(#cardGreen)" filter="url(#cardShadow)"/>
+  <rect x="276" y="537" width="196" height="76" rx="10" fill="none" stroke="#22BE5C" stroke-width="1" opacity="0.4"/>
+  <circle cx="306" cy="562" r="12" fill="#22BE5C" opacity="0.15"/>
+  <text x="306" y="567" fill="#F59E0B" font-size="12" text-anchor="middle">☁</text>
+  <text x="330" y="557" fill="#E8EAF0" font-size="11" font-weight="600">AWS EKS</text>
+  <text x="330" y="570" fill="#8F97AD" font-size="9.5">aws eks update-kubeconfig</text>
+  <rect x="294" y="578" width="38" height="14" rx="7" fill="#22BE5C" opacity="0.15"/>
+  <text x="313" y="588" fill="#22BE5C" font-size="8.5" font-weight="600" text-anchor="middle">✓ Verified</text>
+  <rect x="338" y="578" width="56" height="14" rx="7" fill="rgba(77,144,247,0.15)"/>
+  <text x="366" y="588" fill="#4D90F7" font-size="8.5" font-weight="600" text-anchor="middle">Production</text>
+
+  <!-- Azure AKS -->
+  <rect x="492" y="537" width="216" height="76" rx="10" fill="url(#cardGreen)" filter="url(#cardShadow)"/>
+  <rect x="492" y="537" width="216" height="76" rx="10" fill="none" stroke="#22BE5C" stroke-width="1" opacity="0.4"/>
+  <circle cx="522" cy="562" r="12" fill="#22BE5C" opacity="0.15"/>
+  <text x="522" y="567" fill="#4D90F7" font-size="12" text-anchor="middle">☁</text>
+  <text x="548" y="557" fill="#E8EAF0" font-size="11" font-weight="600">Azure AKS</text>
+  <text x="548" y="570" fill="#8F97AD" font-size="9.5">az aks get-credentials</text>
+  <rect x="510" y="578" width="38" height="14" rx="7" fill="#22BE5C" opacity="0.15"/>
+  <text x="529" y="588" fill="#22BE5C" font-size="8.5" font-weight="600" text-anchor="middle">✓ Verified</text>
+  <rect x="554" y="578" width="42" height="14" rx="7" fill="rgba(245,158,11,0.15)"/>
+  <text x="575" y="588" fill="#F59E0B" font-size="8.5" font-weight="600" text-anchor="middle">Staging</text>
+
+  <!-- GKE -->
+  <rect x="728" y="537" width="196" height="76" rx="10" fill="url(#cardGreen)" filter="url(#cardShadow)"/>
+  <rect x="728" y="537" width="196" height="76" rx="10" fill="none" stroke="#22BE5C" stroke-width="1" opacity="0.4"/>
+  <circle cx="758" cy="562" r="12" fill="#22BE5C" opacity="0.15"/>
+  <text x="758" y="567" fill="#22BE5C" font-size="12" text-anchor="middle">☁</text>
+  <text x="782" y="557" fill="#E8EAF0" font-size="11" font-weight="600">Google GKE</text>
+  <text x="782" y="570" fill="#8F97AD" font-size="9.5">gcloud container clusters</text>
+  <rect x="746" y="578" width="38" height="14" rx="7" fill="#22BE5C" opacity="0.15"/>
+  <text x="765" y="588" fill="#22BE5C" font-size="8.5" font-weight="600" text-anchor="middle">✓ Verified</text>
+  <rect x="790" y="578" width="42" height="14" rx="7" fill="rgba(77,144,247,0.15)"/>
+  <text x="811" y="588" fill="#4D90F7" font-size="8.5" font-weight="600" text-anchor="middle">Multi-env</text>
+
+  <!-- More clusters indicator -->
+  <rect x="944" y="537" width="208" height="76" rx="10" fill="rgba(255,255,255,0.03)"/>
+  <rect x="944" y="537" width="208" height="76" rx="10" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="1048" y="568" fill="#8F97AD" font-size="11" font-weight="500" text-anchor="middle">+ 4 more providers</text>
+  <text x="1048" y="584" fill="#8F97AD" font-size="9.5" text-anchor="middle">k3s · kind · Minikube · Rancher</text>
+  <text x="1048" y="598" fill="#4D90F7" font-size="9" font-weight="500" text-anchor="middle">All via ~/.kube/config</text>
+
+  <!-- ═══════════════════════════════════════════════════
+       BOTTOM: TECH STACK LEGEND
+  ═══════════════════════════════════════════════════ -->
+  <line x1="48" y1="635" x2="1152" y2="635" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+
+  <text x="48" y="656" fill="#8F97AD" font-size="10" font-weight="500" letter-spacing="1">TECH STACK</text>
+
+  <!-- Stack pills -->
+  <g transform="translate(160, 644)">
+    <rect x="0" y="0" width="58" height="18" rx="9" fill="rgba(77,144,247,0.12)"/>
+    <text x="29" y="12.5" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">React 18</text>
+  </g>
+  <g transform="translate(224, 644)">
+    <rect x="0" y="0" width="52" height="18" rx="9" fill="rgba(77,144,247,0.12)"/>
+    <text x="26" y="12.5" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">TypeScript</text>
+  </g>
+  <g transform="translate(282, 644)">
+    <rect x="0" y="0" width="52" height="18" rx="9" fill="rgba(77,144,247,0.12)"/>
+    <text x="26" y="12.5" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">Tailwind CSS</text>
+  </g>
+  <g transform="translate(340, 644)">
+    <rect x="0" y="0" width="40" height="18" rx="9" fill="rgba(34,190,92,0.12)"/>
+    <text x="20" y="12.5" fill="#22BE5C" font-size="9" font-weight="600" text-anchor="middle">Go 1.24</text>
+  </g>
+  <g transform="translate(386, 644)">
+    <rect x="0" y="0" width="50" height="18" rx="9" fill="rgba(34,190,92,0.12)"/>
+    <text x="25" y="12.5" fill="#22BE5C" font-size="9" font-weight="600" text-anchor="middle">client-go</text>
+  </g>
+  <g transform="translate(442, 644)">
+    <rect x="0" y="0" width="58" height="18" rx="9" fill="rgba(245,158,11,0.12)"/>
+    <text x="29" y="12.5" fill="#F59E0B" font-size="9" font-weight="600" text-anchor="middle">Tauri 2.0</text>
+  </g>
+  <g transform="translate(506, 644)">
+    <rect x="0" y="0" width="56" height="18" rx="9" fill="rgba(139,92,246,0.12)"/>
+    <text x="28" y="12.5" fill="#8B5CF6" font-size="9" font-weight="600" text-anchor="middle">React Flow</text>
+  </g>
+  <g transform="translate(568, 644)">
+    <rect x="0" y="0" width="36" height="18" rx="9" fill="rgba(139,92,246,0.12)"/>
+    <text x="18" y="12.5" fill="#8B5CF6" font-size="9" font-weight="600" text-anchor="middle">ELK.js</text>
+  </g>
+  <g transform="translate(610, 644)">
+    <rect x="0" y="0" width="50" height="18" rx="9" fill="rgba(139,92,246,0.12)"/>
+    <text x="25" y="12.5" fill="#8B5CF6" font-size="9" font-weight="600" text-anchor="middle">Zustand</text>
+  </g>
+  <g transform="translate(666, 644)">
+    <rect x="0" y="0" width="72" height="18" rx="9" fill="rgba(77,144,247,0.12)"/>
+    <text x="36" y="12.5" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">React Query</text>
+  </g>
+  <g transform="translate(744, 644)">
+    <rect x="0" y="0" width="74" height="18" rx="9" fill="rgba(77,144,247,0.12)"/>
+    <text x="37" y="12.5" fill="#4D90F7" font-size="9" font-weight="600" text-anchor="middle">Framer Motion</text>
+  </g>
+  <g transform="translate(824, 644)">
+    <rect x="0" y="0" width="60" height="18" rx="9" fill="rgba(34,190,92,0.12)"/>
+    <text x="30" y="12.5" fill="#22BE5C" font-size="9" font-weight="600" text-anchor="middle">Helm OCI</text>
+  </g>
+
+  <!-- Apache 2.0 badge -->
+  <rect x="980" y="644" width="82" height="18" rx="9" fill="rgba(255,255,255,0.06)"/>
+  <text x="1021" y="656.5" fill="#8F97AD" font-size="9" font-weight="500" text-anchor="middle">Apache 2.0</text>
+  <rect x="1068" y="644" width="84" height="18" rx="9" fill="rgba(255,255,255,0.06)"/>
+  <text x="1110" y="656.5" fill="#8F97AD" font-size="9" font-weight="500" text-anchor="middle">kubilitics.com</text>
+
+  <!-- Copyright -->
+  <text x="600" y="700" fill="#4D5568" font-size="9.5" text-anchor="middle">© 2025 Kubilitics · github.com/vellankikoti/kubilitics</text>
+</svg>

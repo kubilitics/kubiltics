@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kubilitics — App Screens Showcase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0D0E14;
+  --card:#14161F;
+  --card2:#1A1C28;
+  --border:rgba(255,255,255,0.08);
+  --blue:#4D8EF7;
+  --purple:#8B5CF6;
+  --green:#22C55E;
+  --amber:#F59E0B;
+  --red:#EF4444;
+  --cyan:#06B6D4;
+  --text:#E8EAF0;
+  --muted:#8F97AD;
+  --font:'Sora',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+body{background:#000;font-family:var(--font);color:var(--text);overflow-x:hidden}
+
+/* ── NAV ── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(13,14,20,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:10px 20px}
+.nav-logo{display:flex;align-items:center;gap:8px;margin-right:16px}
+.nav-logo svg{width:28px;height:28px}
+.nav-logo span{font-size:13px;font-weight:700;color:var(--text);letter-spacing:.3px}
+.nav-btn{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:.15s}
+.nav-btn:hover,.nav-btn.active{background:rgba(77,142,247,0.15);color:var(--blue);border-color:rgba(77,142,247,0.4)}
+.nav-hint{margin-left:auto;font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+/* ── SCREENS ── */
+.screen{display:none;width:1280px;min-height:800px;background:var(--bg);position:relative;overflow:hidden;margin:0 auto}
+.screen.active{display:flex}
+.screen-wrapper{padding-top:52px;width:100%}
+
+/* ── SIDEBAR ── */
+.sidebar{width:220px;min-height:calc(100vh - 52px);background:#0A0B11;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;padding:12px 0}
+.sidebar-section{padding:16px 14px 4px;font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1.4px;text-transform:uppercase}
+.sidebar-item{display:flex;align-items:center;gap:9px;padding:7px 14px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:0;transition:.12s;margin:1px 6px;border-radius:7px}
+.sidebar-item:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+.sidebar-item.active{background:rgba(77,142,247,0.12);color:var(--blue)}
+.sidebar-item .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+.sidebar-item .dot.amber{background:var(--amber)}
+.sidebar-item .dot.red{background:var(--red)}
+.sidebar-item .badge{margin-left:auto;font-size:9px;font-weight:700;color:var(--muted);font-family:var(--mono)}
+.sidebar-item .badge.blue{color:var(--blue)}
+.sidebar-divider{height:1px;background:var(--border);margin:8px 14px}
+
+/* ── TOPBAR ── */
+.topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;background:rgba(13,14,20,0.8)}
+.topbar-title{font-size:15px;font-weight:700;color:var(--text)}
+.live-badge{display:flex;align-items:center;gap:5px;padding:3px 9px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:20px;font-size:10px;font-weight:600;color:var(--green)}
+.live-badge .pulse{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.topbar-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--muted);transition:.12s}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-ai{background:rgba(139,92,246,0.15);color:var(--purple);border-color:rgba(139,92,246,0.3)}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:20px}
+.page-bg{
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(77,142,247,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(139,92,246,0.03) 0%, transparent 50%),
+    var(--bg);
+  flex:1;overflow-y:auto
+}
+
+/* ── CARDS ── */
+.card{background:rgba(255,255,255,0.03);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px;padding:18px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:600;color:var(--text)}
+.card-muted{font-size:11px;color:var(--muted)}
+
+/* ── STAT CARDS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat-card{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.blue::before{background:linear-gradient(90deg,var(--blue),rgba(77,142,247,0))}
+.stat-card.green::before{background:linear-gradient(90deg,var(--green),rgba(34,197,94,0))}
+.stat-card.amber::before{background:linear-gradient(90deg,var(--amber),rgba(245,158,11,0))}
+.stat-card.red::before{background:linear-gradient(90deg,var(--red),rgba(239,68,68,0))}
+.stat-card.purple::before{background:linear-gradient(90deg,var(--purple),rgba(139,92,246,0))}
+.stat-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.stat-value{font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
+.stat-value.blue{color:var(--blue)}
+.stat-value.green{color:var(--green)}
+.stat-value.amber{color:var(--amber)}
+.stat-value.red{color:var(--red)}
+.stat-value.purple{color:var(--purple)}
+.stat-sub{font-size:10px;color:var(--muted)}
+
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.badge.green{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.25)}
+.badge.amber{background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.25)}
+.badge.red{background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.25)}
+.badge.blue{background:rgba(77,142,247,0.12);color:var(--blue);border:1px solid rgba(77,142,247,0.25)}
+.badge.purple{background:rgba(139,92,246,0.12);color:var(--purple);border:1px solid rgba(139,92,246,0.25)}
+.badge.cyan{background:rgba(6,182,212,0.12);color:var(--cyan);border:1px solid rgba(6,182,212,0.25)}
+
+/* ── TABLE ── */
+.table{width:100%;border-collapse:collapse}
+.table th{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding:8px 12px;border-bottom:1px solid var(--border);text-align:left}
+.table td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.table tr:hover td{background:rgba(255,255,255,0.02)}
+.table tr:last-child td{border-bottom:none}
+.mono{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* ── PROGRESS ── */
+.prog{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+.prog-bar{height:100%;border-radius:2px;transition:.3s}
+.prog-bar.blue{background:var(--blue)}
+.prog-bar.green{background:var(--green)}
+.prog-bar.amber{background:var(--amber)}
+.prog-bar.red{background:var(--red)}
+
+/* ── DONUT ── */
+.donut-wrap{display:flex;align-items:center;gap:16px}
+.donut{position:relative;width:72px;height:72px;flex-shrink:0}
+.donut svg{transform:rotate(-90deg)}
+.donut-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--font)}
+.donut-pct{font-size:15px;font-weight:800;line-height:1}
+.donut-sub{font-size:8px;color:var(--muted);font-weight:500}
+
+/* ── EVENT ROW ── */
+.event-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.event-row:last-child{border-bottom:none}
+.event-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.event-content{flex:1}
+.event-title{font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px}
+.event-meta{font-size:10px;color:var(--muted)}
+
+/* ── TOPOLOGY NODES ── */
+.topo-canvas{position:relative;background:rgba(0,0,0,0.3);border-radius:12px;border:1px solid var(--border);overflow:hidden;height:420px}
+.topo-node{position:absolute;border-radius:10px;border:1px solid;padding:8px 12px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.topo-node.deploy{background:rgba(77,142,247,0.12);border-color:rgba(77,142,247,0.35);color:var(--blue)}
+.topo-node.rs{background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.3);color:var(--cyan)}
+.topo-node.pod{background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3);color:var(--green)}
+.topo-node.svc{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.3);color:var(--amber)}
+.topo-node.ingress{background:rgba(139,92,246,0.1);border-color:rgba(139,92,246,0.3);color:var(--purple)}
+.topo-node.ns{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.12);color:var(--muted)}
+.topo-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+/* ── AI CHAT ── */
+.chat-panel{position:absolute;right:0;top:0;bottom:0;width:380px;background:#0E0F18;border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:10}
+.chat-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.chat-title{font-size:13px;font-weight:700;color:var(--text)}
+.chat-model{font-size:10px;color:var(--muted);margin-left:auto;font-family:var(--mono)}
+.chat-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.chat-msg{display:flex;flex-direction:column;gap:4px}
+.chat-msg.user .bubble{background:rgba(77,142,247,0.15);border:1px solid rgba(77,142,247,0.25);border-radius:10px 10px 2px 10px;padding:10px 13px;font-size:12px;color:var(--text);align-self:flex-end;max-width:85%}
+.chat-msg.ai .bubble{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:2px 10px 10px 10px;padding:10px 13px;font-size:12px;color:var(--text);max-width:95%}
+.tool-block{background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.25);border-radius:8px;padding:10px 12px;margin-top:6px;font-size:11px}
+.tool-block-header{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.8px}
+.tool-result-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px}
+.tool-result-row:last-child{border-bottom:none}
+.chat-input-wrap{padding:12px;border-top:1px solid var(--border)}
+.chat-input{width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--text);font-family:var(--font);outline:none;resize:none}
+
+/* ── CLUSTER CARD ── */
+.cluster-card{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;overflow:hidden}
+.cluster-badge{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+.health-ring{width:56px;height:56px;flex-shrink:0}
+.health-ring svg{transform:rotate(-90deg)}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="nav-logo">
+    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#4D8EF7" stroke-width="2.5" stroke-linejoin="round"/>
+      <polyline points="13,12 20,6 27,12" fill="none" stroke="#4D8EF7" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="20" cy="22" r="4.5" fill="none" stroke="#4D8EF7" stroke-width="2"/>
+      <line x1="20" y1="17.5" x2="20" y2="12" stroke="#4D8EF7" stroke-width="1.8"/>
+      <line x1="23.9" y1="24.2" x2="27.5" y2="26.5" stroke="#4D8EF7" stroke-width="1.8"/>
+      <line x1="16.1" y1="24.2" x2="12.5" y2="26.5" stroke="#4D8EF7" stroke-width="1.8"/>
+      <line x1="20" y1="26.5" x2="20" y2="31" stroke="#4D8EF7" stroke-width="1.8"/>
+    </svg>
+    <span>KUBILITICS</span>
+  </div>
+  <button class="nav-btn active" onclick="show(0)">1 · Dashboard</button>
+  <button class="nav-btn" onclick="show(1)">2 · Fleet</button>
+  <button class="nav-btn" onclick="show(2)">3 · Topology</button>
+  <button class="nav-btn" onclick="show(3)">4 · Workloads</button>
+  <button class="nav-btn" onclick="show(4)">5 · Pod Detail</button>
+  <button class="nav-btn" onclick="show(5)">6 · AI Chat</button>
+  <button class="nav-btn" onclick="show(6)">7 · Events</button>
+  <button class="nav-btn" onclick="show(7)">8 · Blast Radius</button>
+  <span class="nav-hint">1280 × 800 · screenshot each screen</span>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 1 — CLUSTER DASHBOARD
+════════════════════════════════════════════════════════ -->
+<div class="screen active" id="s0">
+<div class="screen-wrapper" style="display:flex;flex:1">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div style="padding:14px;border-bottom:1px solid var(--border);margin-bottom:6px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">Active Cluster</div>
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(77,142,247,0.1);border:1px solid rgba(77,142,247,0.25);border-radius:8px;padding:8px 10px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text)">docker-desktop</div>
+          <div style="font-size:9px;color:var(--muted)">v1.29.2 · 12 nodes</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-item active">
+      <span>📊</span> Dashboard
+      <span class="badge blue" style="margin-left:auto;font-size:9px">Live</span>
+    </div>
+    <div class="sidebar-section">Workloads</div>
+    <div class="sidebar-item"><span>🚀</span> Deployments <span class="badge" style="background:rgba(255,255,255,0.06);color:var(--muted)">24</span></div>
+    <div class="sidebar-item"><span>📦</span> Pods <span class="badge" style="background:rgba(255,255,255,0.06);color:var(--muted)">234</span></div>
+    <div class="sidebar-item"><span>⚙️</span> StatefulSets</div>
+    <div class="sidebar-item"><span>🔄</span> DaemonSets</div>
+    <div class="sidebar-item"><span>⏱</span> CronJobs</div>
+    <div class="sidebar-section">Networking</div>
+    <div class="sidebar-item"><span>🌐</span> Services</div>
+    <div class="sidebar-item"><span>🔀</span> Ingresses</div>
+    <div class="sidebar-section">Storage</div>
+    <div class="sidebar-item"><span>💾</span> PVCs</div>
+    <div class="sidebar-section">Security</div>
+    <div class="sidebar-item"><span>🔐</span> RBAC</div>
+    <div class="sidebar-item"><span>🛡</span> Secrets</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item"><span>🗺</span> Topology</div>
+    <div class="sidebar-item"><span>💥</span> Blast Radius</div>
+    <div class="sidebar-item"><span>🤖</span> AI Assistant</div>
+  </div>
+
+  <!-- Main -->
+  <div class="page-bg" style="flex:1;padding:20px;display:flex;flex-direction:column;gap:16px">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(77,142,247,0.15);display:flex;align-items:center;justify-content:center;font-size:18px">📊</div>
+      <div>
+        <div style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#E8EAF0,#8F97AD);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Cluster Dashboard</div>
+        <div style="font-size:11px;color:var(--muted)">Real-time operational intelligence for docker-desktop</div>
+      </div>
+      <div class="live-badge" style="margin-left:auto"><div class="pulse"></div> Live</div>
+      <button class="btn">⟳ Sync</button>
+      <button class="btn btn-ai">✦ Ask AI</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-label">Health Score</div>
+        <div class="stat-value blue">87<span style="font-size:14px;font-weight:500;color:var(--muted)">/100</span></div>
+        <div class="stat-sub">↑ 3 pts from yesterday</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Nodes</div>
+        <div class="stat-value green">12<span style="font-size:14px;font-weight:500;color:var(--muted)">/12</span></div>
+        <div class="stat-sub">All nodes ready</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">Pods Running</div>
+        <div class="stat-value amber">234<span style="font-size:14px;font-weight:500;color:var(--muted)">/256</span></div>
+        <div class="stat-sub">22 pending · 0 failed</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Active Alerts</div>
+        <div class="stat-value purple">3</div>
+        <div class="stat-sub">2 warning · 1 critical</div>
+      </div>
+    </div>
+
+    <!-- Middle row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:16px;flex:1">
+      <!-- CPU / Memory -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Resource Utilization</span><span class="badge blue">Live</span></div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <!-- CPU -->
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:11px;color:var(--muted)">CPU</span>
+              <span style="font-size:12px;font-weight:700;color:var(--blue)">62%</span>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut">
+                <svg width="72" height="72"><circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/><circle cx="36" cy="36" r="28" fill="none" stroke="#4D8EF7" stroke-width="7" stroke-dasharray="175.9" stroke-dashoffset="66.8" stroke-linecap="round"/></svg>
+                <div class="donut-label"><span class="donut-pct" style="color:var(--blue)">62%</span><span class="donut-sub">CPU</span></div>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:10px;color:var(--muted);margin-bottom:4px">16 cores · 9.9 used</div>
+                <div class="prog"><div class="prog-bar blue" style="width:62%"></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--muted)"><span>0</span><span>16 cores</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- Memory -->
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:11px;color:var(--muted)">Memory</span>
+              <span style="font-size:12px;font-weight:700;color:var(--amber)">78%</span>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut">
+                <svg width="72" height="72"><circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/><circle cx="36" cy="36" r="28" fill="none" stroke="#F59E0B" stroke-width="7" stroke-dasharray="175.9" stroke-dashoffset="38.7" stroke-linecap="round"/></svg>
+                <div class="donut-label"><span class="donut-pct" style="color:var(--amber)">78%</span><span class="donut-sub">RAM</span></div>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:10px;color:var(--muted);margin-bottom:4px">48 GiB · 37.4 GiB used</div>
+                <div class="prog"><div class="prog-bar amber" style="width:78%"></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--muted)"><span>0</span><span>48 GiB</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- Pods -->
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:11px;color:var(--muted)">Pod Capacity</span>
+              <span style="font-size:12px;font-weight:700;color:var(--green)">91%</span>
+            </div>
+            <div class="prog"><div class="prog-bar green" style="width:91%"></div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--muted)"><span>234 running</span><span>256 max</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Events -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Recent Events</span><a style="font-size:10px;color:var(--blue);text-decoration:none;cursor:pointer">View all →</a></div>
+        <div>
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--red)"></div>
+            <div class="event-content">
+              <div class="event-title">OOMKilled: nginx-ingress-6d8b9</div>
+              <div class="event-meta">default · 2m ago · BackOff</div>
+            </div>
+            <span class="badge red">Critical</span>
+          </div>
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--amber)"></div>
+            <div class="event-content">
+              <div class="event-title">Liveness probe failed: api-server-7f9</div>
+              <div class="event-meta">production · 8m ago</div>
+            </div>
+            <span class="badge amber">Warning</span>
+          </div>
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--amber)"></div>
+            <div class="event-content">
+              <div class="event-title">PVC resize pending: postgres-data</div>
+              <div class="event-meta">database · 14m ago</div>
+            </div>
+            <span class="badge amber">Warning</span>
+          </div>
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--green)"></div>
+            <div class="event-content">
+              <div class="event-title">Deployment scaled: frontend ×3→×5</div>
+              <div class="event-meta">staging · 22m ago</div>
+            </div>
+            <span class="badge green">Info</span>
+          </div>
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--green)"></div>
+            <div class="event-content">
+              <div class="event-title">Node joined cluster: worker-node-04</div>
+              <div class="event-meta">kube-system · 1h ago</div>
+            </div>
+            <span class="badge green">Info</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Namespace breakdown -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Pods by Namespace</span></div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text)">production</span><span class="mono">82 pods</span></div>
+            <div class="prog"><div class="prog-bar blue" style="width:82%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text)">kube-system</span><span class="mono">48 pods</span></div>
+            <div class="prog"><div class="prog-bar green" style="width:48%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text)">staging</span><span class="mono">44 pods</span></div>
+            <div class="prog"><div class="prog-bar purple" style="width:44%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text)">monitoring</span><span class="mono">32 pods</span></div>
+            <div class="prog"><div class="prog-bar amber" style="width:32%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text)">database</span><span class="mono">18 pods</span></div>
+            <div class="prog"><div class="prog-bar" style="width:18%;background:var(--cyan)"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text)">default</span><span class="mono">10 pods</span></div>
+            <div class="prog"><div class="prog-bar" style="width:10%;background:var(--muted)"></div></div>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.5px">QUICK STATUS</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="badge green">● 211 Running</span>
+            <span class="badge amber">● 22 Pending</span>
+            <span class="badge red">● 1 Failed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 2 — FLEET OVERVIEW
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s1">
+<div class="screen-wrapper" style="display:flex;flex:1">
+  <div class="sidebar">
+    <div style="padding:14px;border-bottom:1px solid var(--border);margin-bottom:6px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px">Fleet Mode</div>
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:7px;padding:6px 10px;font-size:11px;color:var(--green);font-weight:600">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div>4 clusters connected
+      </div>
+    </div>
+    <div class="sidebar-item active"><span>🗂</span> Fleet Overview</div>
+    <div class="sidebar-item"><span>📊</span> Dashboard</div>
+    <div class="sidebar-section">Clusters</div>
+    <div class="sidebar-item"><span>🐳</span> docker-desktop <span class="dot" style="margin-left:auto"></span></div>
+    <div class="sidebar-item"><span>☁️</span> eks-prod-us-east <span class="dot" style="margin-left:auto"></span></div>
+    <div class="sidebar-item"><span>☁️</span> aks-staging <span class="dot amber" style="margin-left:auto"></span></div>
+    <div class="sidebar-item"><span>☁️</span> gke-dev <span class="dot" style="margin-left:auto"></span></div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item"><span>➕</span> Add Cluster</div>
+  </div>
+  <div class="page-bg" style="flex:1;padding:20px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(34,197,94,0.12);display:flex;align-items:center;justify-content:center;font-size:18px">🗂</div>
+      <div>
+        <div style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#E8EAF0,#8F97AD);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Fleet Overview</div>
+        <div style="font-size:11px;color:var(--muted)">4 clusters · 2,847 total pods · 68 nodes</div>
+      </div>
+      <div class="live-badge" style="margin-left:auto"><div class="pulse"></div> Live</div>
+      <button class="btn">⟳ Sync All</button>
+    </div>
+    <!-- Fleet stats -->
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="stat-label">Healthy Clusters</div><div class="stat-value green">3</div><div class="stat-sub">1 degraded</div></div>
+      <div class="stat-card blue"><div class="stat-label">Total Nodes</div><div class="stat-value blue">68</div><div class="stat-sub">All schedulable</div></div>
+      <div class="stat-card amber"><div class="stat-label">Total Pods</div><div class="stat-value amber">2,847</div><div class="stat-sub">2,791 running</div></div>
+      <div class="stat-card red"><div class="stat-label">Total Alerts</div><div class="stat-value red">7</div><div class="stat-sub">2 critical · 5 warning</div></div>
+    </div>
+    <!-- Cluster cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+      <!-- docker-desktop -->
+      <div class="cluster-card" style="border-color:rgba(77,142,247,0.3)">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),transparent)"></div>
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+          <div style="font-size:28px">🐳</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span style="font-size:14px;font-weight:700;color:var(--text)">docker-desktop</span>
+              <span class="badge green">Healthy</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted)">Kubernetes v1.29.2 · Local</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:800;color:var(--green)">87</div>
+            <div style="font-size:9px;color:var(--muted)">health score</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">12</div><div style="font-size:9px;color:var(--muted)">Nodes</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">234</div><div style="font-size:9px;color:var(--muted)">Pods</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">62%</div><div style="font-size:9px;color:var(--muted)">CPU</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">78%</div><div style="font-size:9px;color:var(--muted)">Memory</div></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;display:flex">Switch to this cluster →</button>
+      </div>
+      <!-- eks-prod -->
+      <div class="cluster-card" style="border-color:rgba(245,158,11,0.3)">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--amber),transparent)"></div>
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+          <div style="font-size:28px">☁️</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span style="font-size:14px;font-weight:700;color:var(--text)">eks-prod-us-east-1</span>
+              <span class="badge green">Healthy</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted)">AWS EKS · us-east-1 · v1.28.5</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:800;color:var(--green)">94</div>
+            <div style="font-size:9px;color:var(--muted)">health score</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">28</div><div style="font-size:9px;color:var(--muted)">Nodes</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">1,204</div><div style="font-size:9px;color:var(--muted)">Pods</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">41%</div><div style="font-size:9px;color:var(--muted)">CPU</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">55%</div><div style="font-size:9px;color:var(--muted)">Memory</div></div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;display:flex">Switch to this cluster →</button>
+      </div>
+      <!-- aks-staging -->
+      <div class="cluster-card" style="border-color:rgba(239,68,68,0.3)">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),transparent)"></div>
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+          <div style="font-size:28px">☁️</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span style="font-size:14px;font-weight:700;color:var(--text)">aks-staging</span>
+              <span class="badge amber">Degraded</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted)">Azure AKS · eastus · v1.27.9</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:800;color:var(--amber)">61</div>
+            <div style="font-size:9px;color:var(--muted)">health score</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">16</div><div style="font-size:9px;color:var(--muted)">Nodes</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">892</div><div style="font-size:9px;color:var(--muted)">Pods</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text);color:var(--red)">89%</div><div style="font-size:9px;color:var(--muted)">CPU</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--amber)">91%</div><div style="font-size:9px;color:var(--muted)">Memory</div></div>
+        </div>
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:7px;padding:7px 10px;font-size:10px;color:var(--red);margin-bottom:8px">⚠ 3 pods OOMKilled · Node memory pressure detected</div>
+        <button class="btn" style="width:100%;justify-content:center;display:flex">Switch to this cluster →</button>
+      </div>
+      <!-- gke-dev -->
+      <div class="cluster-card" style="border-color:rgba(34,197,94,0.3)">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent)"></div>
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+          <div style="font-size:28px">☁️</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span style="font-size:14px;font-weight:700;color:var(--text)">gke-dev</span>
+              <span class="badge green">Healthy</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted)">Google GKE · us-central1 · v1.29.1</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:800;color:var(--green)">91</div>
+            <div style="font-size:9px;color:var(--muted)">health score</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">12</div><div style="font-size:9px;color:var(--muted)">Nodes</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">517</div><div style="font-size:9px;color:var(--muted)">Pods</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">35%</div><div style="font-size:9px;color:var(--muted)">CPU</div></div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px"><div style="font-size:16px;font-weight:700;color:var(--text)">48%</div><div style="font-size:9px;color:var(--muted)">Memory</div></div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;display:flex">Switch to this cluster →</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 3 — TOPOLOGY
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s2">
+<div class="screen-wrapper" style="display:flex;flex:1">
+  <div class="sidebar">
+    <div class="sidebar-item"><span>📊</span> Dashboard</div>
+    <div class="sidebar-section">Workloads</div>
+    <div class="sidebar-item"><span>🚀</span> Deployments</div>
+    <div class="sidebar-item"><span>📦</span> Pods</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item active"><span>🗺</span> Topology</div>
+    <div class="sidebar-item"><span>💥</span> Blast Radius</div>
+    <div style="padding:14px;margin-top:8px">
+      <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:8px;letter-spacing:.8px">VIEW MODE</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="padding:7px 10px;border-radius:7px;font-size:11px;background:rgba(77,142,247,0.12);color:var(--blue);font-weight:600;cursor:pointer">● Cluster View</div>
+        <div style="padding:7px 10px;border-radius:7px;font-size:11px;color:var(--muted);cursor:pointer">○ Namespace View</div>
+        <div style="padding:7px 10px;border-radius:7px;font-size:11px;color:var(--muted);cursor:pointer">○ Workload View</div>
+        <div style="padding:7px 10px;border-radius:7px;font-size:11px;color:var(--muted);cursor:pointer">○ RBAC View</div>
+        <div style="padding:7px 10px;border-radius:7px;font-size:11px;color:var(--muted);cursor:pointer">○ Resource-Centric</div>
+      </div>
+      <div style="margin-top:12px;font-size:10px;font-weight:600;color:var(--muted);margin-bottom:8px;letter-spacing:.8px">FILTER NAMESPACE</div>
+      <select style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--text);font-family:var(--font);outline:none">
+        <option>All namespaces</option>
+        <option>production</option>
+        <option>staging</option>
+      </select>
+      <div style="margin-top:12px;font-size:10px;font-weight:600;color:var(--muted);margin-bottom:8px;letter-spacing:.8px">EXPORT</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge blue" style="cursor:pointer">PNG</span>
+        <span class="badge blue" style="cursor:pointer">SVG</span>
+        <span class="badge blue" style="cursor:pointer">JSON</span>
+        <span class="badge blue" style="cursor:pointer">CSV</span>
+      </div>
+    </div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;background:var(--bg)">
+    <div class="topbar">
+      <span style="font-size:14px;font-weight:700">🗺 Cluster Topology</span>
+      <span class="badge blue">234 nodes · 318 edges</span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn">⊞ Fit View</button>
+        <button class="btn">+ Zoom In</button>
+        <button class="btn">− Zoom Out</button>
+      </div>
+    </div>
+    <!-- Topology Canvas -->
+    <div style="flex:1;position:relative;background:radial-gradient(ellipse at center, rgba(77,142,247,0.03) 0%, transparent 70%), #090A11;overflow:hidden">
+      <!-- Grid pattern -->
+      <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.15" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M 30 0 L 0 0 0 30" fill="none" stroke="#4D8EF7" stroke-width="0.3"/></pattern></defs><rect width="100%" height="100%" fill="url(#grid)"/></svg>
+
+      <!-- SVG edges -->
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+        <!-- ingress → service -->
+        <line x1="440" y1="140" x2="300" y2="220" stroke="#8B5CF6" stroke-width="1.5" stroke-dasharray="4,3" opacity=".6"/>
+        <line x1="440" y1="140" x2="600" y2="220" stroke="#8B5CF6" stroke-width="1.5" stroke-dasharray="4,3" opacity=".6"/>
+        <!-- service → deployment -->
+        <line x1="300" y1="245" x2="200" y2="320" stroke="#F59E0B" stroke-width="1.5" opacity=".5"/>
+        <line x1="300" y1="245" x2="420" y2="320" stroke="#F59E0B" stroke-width="1.5" opacity=".5"/>
+        <line x1="600" y1="245" x2="560" y2="320" stroke="#F59E0B" stroke-width="1.5" opacity=".5"/>
+        <line x1="600" y1="245" x2="720" y2="320" stroke="#F59E0B" stroke-width="1.5" opacity=".5"/>
+        <!-- deployment → replicaset -->
+        <line x1="200" y1="355" x2="140" y2="430" stroke="#06B6D4" stroke-width="1.2" opacity=".5"/>
+        <line x1="420" y1="355" x2="380" y2="430" stroke="#06B6D4" stroke-width="1.2" opacity=".5"/>
+        <line x1="560" y1="355" x2="530" y2="430" stroke="#06B6D4" stroke-width="1.2" opacity=".5"/>
+        <line x1="720" y1="355" x2="760" y2="430" stroke="#06B6D4" stroke-width="1.2" opacity=".5"/>
+        <!-- replicaset → pods -->
+        <line x1="140" y1="460" x2="80" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="140" y1="460" x2="155" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="140" y1="460" x2="230" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="380" y1="460" x2="320" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="380" y1="460" x2="400" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="530" y1="460" x2="500" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="530" y1="460" x2="570" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="760" y1="460" x2="700" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="760" y1="460" x2="780" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+        <line x1="760" y1="460" x2="850" y2="530" stroke="#22C55E" stroke-width="1" opacity=".5"/>
+      </svg>
+
+      <!-- Ingress node -->
+      <div class="topo-node ingress" style="left:380px;top:112px">🔀 nginx-ingress</div>
+
+      <!-- Service nodes -->
+      <div class="topo-node svc" style="left:220px;top:210px">⚡ frontend-svc</div>
+      <div class="topo-node svc" style="left:526px;top:210px">⚡ api-svc</div>
+
+      <!-- Deployment nodes -->
+      <div class="topo-node deploy" style="left:128px;top:308px">🚀 frontend</div>
+      <div class="topo-node deploy" style="left:348px;top:308px">🚀 api-server</div>
+      <div class="topo-node deploy" style="left:490px;top:308px">🚀 auth-service</div>
+      <div class="topo-node deploy" style="left:652px;top:308px">🚀 worker</div>
+
+      <!-- ReplicaSet nodes -->
+      <div class="topo-node rs" style="left:72px;top:410px;font-size:10px">RS frontend-d7f9</div>
+      <div class="topo-node rs" style="left:310px;top:410px;font-size:10px">RS api-server-a3c</div>
+      <div class="topo-node rs" style="left:460px;top:410px;font-size:10px">RS auth-b8d</div>
+      <div class="topo-node rs" style="left:695px;top:410px;font-size:10px">RS worker-f2e</div>
+
+      <!-- Pod nodes -->
+      <div class="topo-node pod" style="left:30px;top:510px;font-size:9px;padding:5px 9px">● pod-xk9m</div>
+      <div class="topo-node pod" style="left:110px;top:510px;font-size:9px;padding:5px 9px">● pod-2jqp</div>
+      <div class="topo-node pod" style="left:190px;top:510px;font-size:9px;padding:5px 9px">● pod-r7wv</div>
+      <div class="topo-node pod" style="left:275px;top:510px;font-size:9px;padding:5px 9px">● pod-n4ks</div>
+      <div class="topo-node pod" style="left:355px;top:510px;font-size:9px;padding:5px 9px">● pod-m8tr</div>
+      <div class="topo-node pod" style="left:455px;top:510px;font-size:9px;padding:5px 9px">● pod-p1qv</div>
+      <div class="topo-node pod" style="left:535px;top:510px;font-size:9px;padding:5px 9px">● pod-w5zy</div>
+      <div class="topo-node pod" style="left:648px;top:510px;font-size:9px;padding:5px 9px">● pod-t3hx</div>
+      <div class="topo-node pod" style="left:724px;top:510px;font-size:9px;padding:5px 9px">● pod-g6nd</div>
+      <div class="topo-node pod" style="left:800px;top:510px;font-size:9px;padding:5px 9px">● pod-c2fb</div>
+
+      <!-- Legend -->
+      <div style="position:absolute;bottom:16px;right:16px;background:rgba(13,14,20,0.9);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:2px">LEGEND</div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:10px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.4);display:inline-block"></span><span style="color:var(--purple)">Ingress</span></div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:10px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);display:inline-block"></span><span style="color:var(--amber)">Service</span></div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:10px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(77,142,247,0.12);border:1px solid rgba(77,142,247,0.35);display:inline-block"></span><span style="color:var(--blue)">Deployment</span></div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:10px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);display:inline-block"></span><span style="color:var(--cyan)">ReplicaSet</span></div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:10px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);display:inline-block"></span><span style="color:var(--green)">Pod</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 4 — WORKLOADS TABLE
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s3">
+<div class="screen-wrapper" style="display:flex;flex:1">
+  <div class="sidebar">
+    <div class="sidebar-item"><span>📊</span> Dashboard</div>
+    <div class="sidebar-section">Workloads</div>
+    <div class="sidebar-item active"><span>🚀</span> Deployments <span class="badge blue" style="margin-left:auto">24</span></div>
+    <div class="sidebar-item"><span>📦</span> Pods <span style="margin-left:auto;font-size:9px;color:var(--muted)">234</span></div>
+    <div class="sidebar-item"><span>⚙️</span> StatefulSets</div>
+    <div class="sidebar-item"><span>🔄</span> DaemonSets</div>
+    <div class="sidebar-item"><span>⏱</span> CronJobs</div>
+    <div class="sidebar-item"><span>📋</span> Jobs</div>
+    <div class="sidebar-section">Networking</div>
+    <div class="sidebar-item"><span>🌐</span> Services</div>
+    <div class="sidebar-item"><span>🔀</span> Ingresses</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item"><span>🗺</span> Topology</div>
+    <div class="sidebar-item"><span>💥</span> Blast Radius</div>
+  </div>
+  <div class="page-bg" style="flex:1;padding:20px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(77,142,247,0.12);display:flex;align-items:center;justify-content:center;font-size:18px">🚀</div>
+      <div>
+        <div style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#E8EAF0,#8F97AD);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Deployments</div>
+        <div style="font-size:11px;color:var(--muted)">24 deployments · docker-desktop</div>
+      </div>
+      <div class="live-badge" style="margin-left:auto"><div class="pulse"></div> Live</div>
+      <button class="btn">⟳ Sync</button>
+    </div>
+    <!-- Filters -->
+    <div style="display:flex;gap:10px;align-items:center">
+      <select style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:11px;color:var(--text);font-family:var(--font);outline:none"><option>All namespaces</option><option>production</option><option>staging</option></select>
+      <select style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:11px;color:var(--text);font-family:var(--font);outline:none"><option>All statuses</option><option>Running</option><option>Degraded</option><option>Failed</option></select>
+      <input placeholder="🔍  Search deployments..." style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:11px;color:var(--text);font-family:var(--font);outline:none"/>
+      <div style="display:flex;gap:6px;margin-left:auto">
+        <span class="badge green">● 19 Ready</span>
+        <span class="badge amber">● 4 Degraded</span>
+        <span class="badge red">● 1 Failed</span>
+      </div>
+    </div>
+    <!-- Table -->
+    <div class="card" style="padding:0;flex:1;overflow:hidden">
+      <table class="table">
+        <thead>
+          <tr style="background:rgba(0,0,0,0.2)">
+            <th>Name</th><th>Namespace</th><th>Replicas</th><th>Status</th><th>CPU</th><th>Memory</th><th>Age</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><span style="font-weight:600;color:var(--text)">frontend</span></td><td><span class="mono">production</span></td><td><span style="font-weight:600;color:var(--green)">3/3</span></td><td><span class="badge green">Running</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar blue" style="width:42%"></div></div><span class="mono">420m</span></div></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar green" style="width:35%"></div></div><span class="mono">358Mi</span></div></td><td class="mono">18d</td><td><div style="display:flex;gap:6px"><span class="badge blue" style="cursor:pointer">Inspect</span><span class="badge purple" style="cursor:pointer">Topology</span></div></td></tr>
+          <tr><td><span style="font-weight:600;color:var(--text)">api-server</span></td><td><span class="mono">production</span></td><td><span style="font-weight:600;color:var(--amber)">4/5</span></td><td><span class="badge amber">Degraded</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar amber" style="width:78%"></div></div><span class="mono">1.2c</span></div></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar amber" style="width:82%"></div></div><span class="mono">2.1Gi</span></div></td><td class="mono">18d</td><td><div style="display:flex;gap:6px"><span class="badge blue" style="cursor:pointer">Inspect</span><span class="badge purple" style="cursor:pointer">Topology</span></div></td></tr>
+          <tr><td><span style="font-weight:600;color:var(--text)">auth-service</span></td><td><span class="mono">production</span></td><td><span style="font-weight:600;color:var(--green)">2/2</span></td><td><span class="badge green">Running</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar blue" style="width:22%"></div></div><span class="mono">220m</span></div></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar green" style="width:28%"></div></div><span class="mono">284Mi</span></div></td><td class="mono">18d</td><td><div style="display:flex;gap:6px"><span class="badge blue" style="cursor:pointer">Inspect</span><span class="badge purple" style="cursor:pointer">Topology</span></div></td></tr>
+          <tr><td><span style="font-weight:600;color:var(--text)">nginx-ingress</span></td><td><span class="mono">kube-system</span></td><td><span style="font-weight:600;color:var(--red)">0/1</span></td><td><span class="badge red">Failed</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar red" style="width:0%"></div></div><span class="mono">0m</span></div></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar red" style="width:0%"></div></div><span class="mono">0Mi</span></div></td><td class="mono">18d</td><td><div style="display:flex;gap:6px"><span class="badge red" style="cursor:pointer">Debug</span><span class="badge blue" style="cursor:pointer">Inspect</span></div></td></tr>
+          <tr><td><span style="font-weight:600;color:var(--text)">postgres</span></td><td><span class="mono">database</span></td><td><span style="font-weight:600;color:var(--green)">1/1</span></td><td><span class="badge green">Running</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar blue" style="width:55%"></div></div><span class="mono">550m</span></div></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar amber" style="width:72%"></div></div><span class="mono">3.6Gi</span></div></td><td class="mono">45d</td><td><div style="display:flex;gap:6px"><span class="badge blue" style="cursor:pointer">Inspect</span><span class="badge purple" style="cursor:pointer">Topology</span></div></td></tr>
+          <tr><td><span style="font-weight:600;color:var(--text)">redis</span></td><td><span class="mono">database</span></td><td><span style="font-weight:600;color:var(--green)">3/3</span></td><td><span class="badge green">Running</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar blue" style="width:15%"></div></div><span class="mono">150m</span></div></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar green" style="width:45%"></div></div><span class="mono">1.2Gi</span></div></td><td class="mono">45d</td><td><div style="display:flex;gap:6px"><span class="badge blue" style="cursor:pointer">Inspect</span><span class="badge purple" style="cursor:pointer">Topology</span></div></td></tr>
+          <tr><td><span style="font-weight:600;color:var(--text)">prometheus</span></td><td><span class="mono">monitoring</span></td><td><span style="font-weight:600;color:var(--green)">1/1</span></td><td><span class="badge green">Running</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar blue" style="width:38%"></div></div><span class="mono">380m</span></div></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar green" style="width:60%"></div></div><span class="mono">4.2Gi</span></div></td><td class="mono">20d</td><td><div style="display:flex;gap:6px"><span class="badge blue" style="cursor:pointer">Inspect</span><span class="badge purple" style="cursor:pointer">Topology</span></div></td></tr>
+          <tr><td><span style="font-weight:600;color:var(--text)">grafana</span></td><td><span class="mono">monitoring</span></td><td><span style="font-weight:600;color:var(--amber)">1/2</span></td><td><span class="badge amber">Degraded</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar blue" style="width:18%"></div></div><span class="mono">180m</span></div></td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="width:50px"><div class="prog-bar green" style="width:32%"></div></div><span class="mono">512Mi</span></div></td><td class="mono">20d</td><td><div style="display:flex;gap:6px"><span class="badge blue" style="cursor:pointer">Inspect</span><span class="badge purple" style="cursor:pointer">Topology</span></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 5 — POD DETAIL
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s4">
+<div class="screen-wrapper" style="display:flex;flex:1">
+  <div class="sidebar">
+    <div class="sidebar-item"><span>📊</span> Dashboard</div>
+    <div class="sidebar-section">Workloads</div>
+    <div class="sidebar-item active"><span>📦</span> Pods</div>
+    <div class="sidebar-item"><span>🚀</span> Deployments</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item"><span>🗺</span> Topology</div>
+    <div class="sidebar-item"><span>💥</span> Blast Radius</div>
+  </div>
+  <div class="page-bg" style="flex:1;padding:20px;display:flex;flex-direction:column;gap:14px">
+    <!-- Breadcrumb -->
+    <div style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px">
+      <span style="cursor:pointer;color:var(--blue)">Workloads</span><span>›</span>
+      <span style="cursor:pointer;color:var(--blue)">Deployments</span><span>›</span>
+      <span style="cursor:pointer;color:var(--blue)">api-server</span><span>›</span>
+      <span style="color:var(--text);font-weight:600">api-server-7f9b4d8c5-xk9mp</span>
+    </div>
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;font-size:18px">📦</div>
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);font-family:var(--mono)">api-server-7f9b4d8c5-xk9mp</div>
+        <div style="font-size:11px;color:var(--muted)">production · Node: worker-node-02 · Started 2h ago</div>
+      </div>
+      <span class="badge amber" style="margin-left:auto">⚠ High Restarts</span>
+      <button class="btn">📋 YAML</button>
+      <button class="btn btn-ai">✦ Ask AI</button>
+    </div>
+    <!-- Status cards -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">Phase</div><span class="badge amber">Running</span></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">Restarts</div><div style="font-size:20px;font-weight:800;color:var(--red)">14</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">CPU</div><div style="font-size:20px;font-weight:800;color:var(--blue)">1.2c</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">Memory</div><div style="font-size:20px;font-weight:800;color:var(--amber)">2.1Gi</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">IP</div><div style="font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono)">10.244.2.87</div></div>
+    </div>
+    <!-- Tabs + content -->
+    <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:0">
+      <div style="padding:8px 16px;font-size:12px;font-weight:600;color:var(--blue);border-bottom:2px solid var(--blue);cursor:pointer">Overview</div>
+      <div style="padding:8px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer">Logs</div>
+      <div style="padding:8px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer">Events</div>
+      <div style="padding:8px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer">Metrics</div>
+      <div style="padding:8px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer">YAML</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+      <!-- Containers -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Containers</span><span class="badge blue">1 running</span></div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:9px;padding:12px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span class="badge green">● Ready</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono)">api-server</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+            <div><span style="color:var(--muted)">Image:</span><div class="mono" style="color:var(--text);margin-top:2px">api-server:v2.4.1</div></div>
+            <div><span style="color:var(--muted)">Pull:</span><div style="color:var(--text);margin-top:2px">IfNotPresent</div></div>
+            <div><span style="color:var(--muted)">CPU Req/Limit:</span><div class="mono" style="color:var(--text);margin-top:2px">500m / 2000m</div></div>
+            <div><span style="color:var(--muted)">Mem Req/Limit:</span><div class="mono" style="color:var(--text);margin-top:2px">512Mi / 4Gi</div></div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Liveness Probe</div>
+            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:6px 9px;font-size:10px;color:var(--red)">⚠ HTTP GET /healthz — Last failed 8m ago</div>
+          </div>
+        </div>
+      </div>
+      <!-- Events -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Recent Events</span><span class="badge amber">3 warnings</span></div>
+        <div class="event-row">
+          <div class="event-dot" style="background:var(--red)"></div>
+          <div class="event-content">
+            <div class="event-title">Liveness probe failed: HTTP probe failed</div>
+            <div class="event-meta">8m ago · count: 3</div>
+          </div>
+        </div>
+        <div class="event-row">
+          <div class="event-dot" style="background:var(--amber)"></div>
+          <div class="event-content">
+            <div class="event-title">Back-off restarting failed container</div>
+            <div class="event-meta">12m ago · count: 14</div>
+          </div>
+        </div>
+        <div class="event-row">
+          <div class="event-dot" style="background:var(--amber)"></div>
+          <div class="event-content">
+            <div class="event-title">Started container api-server</div>
+            <div class="event-meta">2h ago</div>
+          </div>
+        </div>
+        <div class="event-row">
+          <div class="event-dot" style="background:var(--green)"></div>
+          <div class="event-content">
+            <div class="event-title">Successfully pulled image api-server:v2.4.1</div>
+            <div class="event-meta">2h ago · 3.2s</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 6 — AI CHAT
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s5">
+<div class="screen-wrapper" style="display:flex;flex:1;position:relative">
+  <div class="sidebar">
+    <div class="sidebar-item active"><span>📊</span> Dashboard</div>
+    <div class="sidebar-section">Workloads</div>
+    <div class="sidebar-item"><span>🚀</span> Deployments</div>
+    <div class="sidebar-item"><span>📦</span> Pods</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item"><span>🤖</span> AI Assistant</div>
+  </div>
+  <!-- Blurred main content -->
+  <div class="page-bg" style="flex:1;padding:20px;filter:blur(1px);opacity:.5">
+    <div style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:16px">Cluster Dashboard</div>
+    <div class="stats-grid"><div class="stat-card blue"><div class="stat-label">Health Score</div><div class="stat-value blue">87</div></div><div class="stat-card green"><div class="stat-label">Nodes</div><div class="stat-value green">12</div></div><div class="stat-card amber"><div class="stat-label">Pods Running</div><div class="stat-value amber">234</div></div><div class="stat-card purple"><div class="stat-label">Alerts</div><div class="stat-value purple">3</div></div></div>
+  </div>
+  <!-- AI Chat Panel -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,rgba(139,92,246,0.3),rgba(77,142,247,0.3));display:flex;align-items:center;justify-content:center;font-size:14px">✦</div>
+      <div>
+        <div class="chat-title">Kubilitics AI</div>
+        <div style="font-size:9px;color:var(--green);font-weight:500">● Connected · docker-desktop</div>
+      </div>
+      <div class="chat-model">GPT-4o</div>
+      <button style="margin-left:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div class="chat-body">
+      <div class="chat-msg user"><div class="bubble" style="align-self:flex-end">Why is the api-server deployment degraded? It shows 4/5 replicas.</div></div>
+      <div class="chat-msg ai">
+        <div class="bubble">
+          Let me check the deployment status and pod health.
+          <div class="tool-block">
+            <div class="tool-block-header">⚙ inspect_deployment</div>
+            <div class="tool-result-row"><span style="color:var(--muted)">replicas</span><span style="color:var(--amber);font-family:var(--mono)">4/5 ready</span></div>
+            <div class="tool-result-row"><span style="color:var(--muted)">strategy</span><span style="color:var(--text);font-family:var(--mono)">RollingUpdate</span></div>
+            <div class="tool-result-row"><span style="color:var(--muted)">conditions</span><span style="color:var(--red)">ReplicaFailure=True</span></div>
+          </div>
+          <div class="tool-block" style="background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.2)">
+            <div class="tool-block-header" style="color:var(--green)">🔍 analyze_pod_health</div>
+            <div class="tool-result-row"><span style="color:var(--muted)">failing pod</span><span style="color:var(--text);font-family:var(--mono)">api-server-7f9b4d8c5-xk9mp</span></div>
+            <div class="tool-result-row"><span style="color:var(--muted)">restarts</span><span style="color:var(--red);font-family:var(--mono)">14 (OOMKilled x11)</span></div>
+            <div class="tool-result-row"><span style="color:var(--muted)">mem limit</span><span style="color:var(--text);font-family:var(--mono)">4Gi</span></div>
+            <div class="tool-result-row"><span style="color:var(--muted)">mem actual</span><span style="color:var(--amber);font-family:var(--mono)">3.9Gi (97%)</span></div>
+          </div>
+          The pod <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-size:10px;font-family:var(--mono)">api-server-7f9b4d8c5-xk9mp</code> is being OOMKilled repeatedly — it's consuming nearly all of its 4Gi memory limit. The deployment can't bring up the 5th replica because of this crash loop.<br/><br/>
+          <strong>Recommended fix:</strong> Either increase the memory limit to 6Gi, or investigate the memory leak — the pod has been restarting for 2 hours with no sign of stabilization.
+        </div>
+      </div>
+      <div class="chat-msg user"><div class="bubble" style="align-self:flex-end">Can you scale it down to 3 replicas while we investigate?</div></div>
+      <div class="chat-msg ai">
+        <div class="bubble">
+          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:4px">⚠ CONFIRMATION REQUIRED</div>
+            <div style="font-size:11px;color:var(--text)">Scale <code style="font-family:var(--mono)">api-server</code> from 5 → 3 replicas in <code style="font-family:var(--mono)">production</code>. This may reduce availability.</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <div style="padding:5px 14px;background:var(--amber);color:#000;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">Confirm Scale Down</div>
+              <div style="padding:5px 14px;background:rgba(255,255,255,0.06);color:var(--muted);border-radius:7px;font-size:11px;cursor:pointer">Cancel</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-wrap">
+      <textarea class="chat-input" rows="2" placeholder="Ask about your cluster... (⌘I to toggle)">Show me the memory trend for api-server over the last hour</textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <span style="font-size:9px;color:var(--muted)">55 tools · GPT-4o · docker-desktop scoped</span>
+        <div style="width:28px;height:28px;background:var(--blue);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px">↑</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 7 — EVENTS
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s6">
+<div class="screen-wrapper" style="display:flex;flex:1">
+  <div class="sidebar">
+    <div class="sidebar-item"><span>📊</span> Dashboard</div>
+    <div class="sidebar-section">Cluster</div>
+    <div class="sidebar-item active"><span>📢</span> Events <span class="badge red" style="margin-left:auto">1,547</span></div>
+    <div class="sidebar-item"><span>🖥</span> Nodes</div>
+    <div class="sidebar-item"><span>📂</span> Namespaces</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item"><span>🗺</span> Topology</div>
+  </div>
+  <div class="page-bg" style="flex:1;padding:20px;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.1);display:flex;align-items:center;justify-content:center;font-size:18px">📢</div>
+      <div>
+        <div style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#E8EAF0,#8F97AD);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Events</div>
+        <div style="font-size:11px;color:var(--muted)">1,547 events · Real-time stream</div>
+      </div>
+      <div class="live-badge" style="margin-left:auto"><div class="pulse"></div> Live</div>
+    </div>
+    <!-- Filters -->
+    <div style="display:flex;gap:10px">
+      <select style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:11px;color:var(--text);font-family:var(--font);outline:none"><option>All namespaces</option></select>
+      <select style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:11px;color:var(--text);font-family:var(--font);outline:none"><option>All types</option><option>Warning</option><option>Normal</option></select>
+      <input placeholder="🔍 Filter by reason, object, message..." style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:11px;color:var(--text);font-family:var(--font);outline:none"/>
+      <div style="display:flex;gap:6px">
+        <span class="badge red" style="cursor:pointer">Warning</span>
+        <span class="badge green" style="cursor:pointer">Normal</span>
+      </div>
+    </div>
+    <!-- Events table -->
+    <div class="card" style="padding:0;flex:1">
+      <table class="table">
+        <thead><tr style="background:rgba(0,0,0,0.2)"><th>Type</th><th>Reason</th><th>Object</th><th>Namespace</th><th>Message</th><th>Count</th><th>Age</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge red">Warning</span></td><td class="mono" style="color:var(--red)">OOMKilling</td><td class="mono">pod/api-server-7f9b4d8c5-xk9mp</td><td class="mono">production</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Memory limit exceeded — container terminated</td><td class="mono" style="color:var(--red)">11</td><td class="mono">2m</td></tr>
+          <tr><td><span class="badge amber">Warning</span></td><td class="mono" style="color:var(--amber)">BackOff</td><td class="mono">pod/api-server-7f9b4d8c5-xk9mp</td><td class="mono">production</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Back-off restarting failed container api-server</td><td class="mono" style="color:var(--amber)">14</td><td class="mono">8m</td></tr>
+          <tr><td><span class="badge amber">Warning</span></td><td class="mono" style="color:var(--amber)">FailedMount</td><td class="mono">pod/postgres-5c9d7f-r2kp</td><td class="mono">database</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Unable to attach or mount volumes: timed out</td><td class="mono">1</td><td class="mono">14m</td></tr>
+          <tr><td><span class="badge green">Normal</span></td><td class="mono" style="color:var(--green)">Scaled</td><td class="mono">deployment/frontend</td><td class="mono">production</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Scaled up replica set frontend-d7f9c from 3 to 5</td><td class="mono">1</td><td class="mono">22m</td></tr>
+          <tr><td><span class="badge green">Normal</span></td><td class="mono" style="color:var(--green)">Pulled</td><td class="mono">pod/frontend-d7f9c-2jqp</td><td class="mono">production</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Successfully pulled image frontend:v3.1.0 in 2.4s</td><td class="mono">1</td><td class="mono">23m</td></tr>
+          <tr><td><span class="badge amber">Warning</span></td><td class="mono" style="color:var(--amber)">NodeNotReady</td><td class="mono">node/worker-node-08</td><td class="mono">—</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Node worker-node-08 status is now: NodeNotReady</td><td class="mono">1</td><td class="mono">1h</td></tr>
+          <tr><td><span class="badge green">Normal</span></td><td class="mono" style="color:var(--green)">NodeReady</td><td class="mono">node/worker-node-08</td><td class="mono">—</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Node worker-node-08 status is now: NodeReady</td><td class="mono">1</td><td class="mono">1h 3m</td></tr>
+          <tr><td><span class="badge green">Normal</span></td><td class="mono" style="color:var(--green)">Killing</td><td class="mono">pod/old-worker-9b4f</td><td class="mono">staging</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Stopping container worker — deployment rolling update</td><td class="mono">1</td><td class="mono">2h</td></tr>
+          <tr><td><span class="badge green">Normal</span></td><td class="mono" style="color:var(--green)">SuccessfulCreate</td><td class="mono">replicaset/api-server-a3c</td><td class="mono">production</td><td style="font-size:11px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Created pod: api-server-a3c-7f9b4d8c5-xk9mp</td><td class="mono">1</td><td class="mono">2h</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SCREEN 8 — BLAST RADIUS
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s7">
+<div class="screen-wrapper" style="display:flex;flex:1">
+  <div class="sidebar">
+    <div class="sidebar-item"><span>📊</span> Dashboard</div>
+    <div class="sidebar-section">Intelligence</div>
+    <div class="sidebar-item active"><span>💥</span> Blast Radius</div>
+    <div class="sidebar-item"><span>🗺</span> Topology</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item"><span>🤖</span> AI Assistant</div>
+  </div>
+  <div class="page-bg" style="flex:1;padding:20px;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;font-size:18px">💥</div>
+      <div>
+        <div style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#E8EAF0,#8F97AD);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Blast Radius</div>
+        <div style="font-size:11px;color:var(--muted)">Predict impact before making cluster changes</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;flex:1">
+      <!-- Input panel -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px">What are you changing?</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px">Resource Type</div>
+              <select style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);font-family:var(--font);outline:none"><option>Deployment</option><option>Service</option><option>Node</option><option>ConfigMap</option></select>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px">Resource Name</div>
+              <input value="api-server" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(77,142,247,0.4);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none"/>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px">Namespace</div>
+              <select style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);font-family:var(--font);outline:none"><option>production</option><option>staging</option></select>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px">Change Type</div>
+              <select style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);font-family:var(--font);outline:none"><option>Delete</option><option>Scale to 0</option><option>Update image</option><option>Change config</option></select>
+            </div>
+            <button class="btn btn-primary" style="width:100%;padding:10px;font-size:12px;justify-content:center;display:flex">⚡ Analyze Blast Radius</button>
+          </div>
+        </div>
+        <!-- Risk score -->
+        <div class="card" style="border-color:rgba(239,68,68,0.3)">
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.6px">Risk Score</div>
+            <div style="font-size:52px;font-weight:800;color:var(--red);line-height:1">87</div>
+            <div style="font-size:11px;color:var(--red);font-weight:600;margin-top:4px">HIGH RISK</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px">Deleting api-server will cascade to 6 dependent services and disrupt 234 active connections</div>
+          </div>
+        </div>
+      </div>
+      <!-- Impact view -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Affected Resources</span><span class="badge red">12 resources</span></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:9px;padding:12px">
+              <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">🔴 Direct Impact (deleted)</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span class="badge red">Deployment/api-server</span>
+                <span class="badge red">ReplicaSet/api-server-a3c</span>
+                <span class="badge red">Pod ×5</span>
+                <span class="badge red">HPA/api-server-hpa</span>
+              </div>
+            </div>
+            <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:9px;padding:12px">
+              <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">🟡 Service Disruption</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span class="badge amber">Service/api-svc (no endpoints)</span>
+                <span class="badge amber">Ingress/main-ingress (/api/* → 503)</span>
+              </div>
+            </div>
+            <div style="background:rgba(77,142,247,0.08);border:1px solid rgba(77,142,247,0.2);border-radius:9px;padding:12px">
+              <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">🔵 Downstream Dependencies</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span class="badge blue">frontend (calls /api/v1)</span>
+                <span class="badge blue">worker (job queue consumer)</span>
+                <span class="badge blue">auth-service (token validation)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Recommendation -->
+        <div class="card" style="border-color:rgba(139,92,246,0.3)">
+          <div class="card-header"><span class="card-title">✦ AI Recommendation</span><span class="badge purple">Safer path available</span></div>
+          <div style="font-size:12px;color:var(--text);line-height:1.6">
+            Instead of deleting, <strong>scale to 0 replicas</strong> to gracefully drain connections while keeping the Deployment resource for quick recovery. Then coordinate with the frontend and auth-service teams before proceeding — both call this service synchronously.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-ai">✦ Ask AI to Plan This</button>
+            <button class="btn">📋 Export Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const screens = document.querySelectorAll('.screen');
+const btns = document.querySelectorAll('.nav-btn');
+function show(i){
+  screens.forEach((s,j)=>{s.classList.toggle('active',j===i)});
+  btns.forEach((b,j)=>{b.classList.toggle('active',j===i)});
+}
+</script>
+</body>
+</html>
