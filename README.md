@@ -20,6 +20,7 @@
   <a href="#%EF%B8%8F-desktop-app-download">Desktop App</a> •
   <a href="#%EF%B8%8F-helm-deployment-in-cluster">Helm Deploy</a> •
   <a href="#-features">Features</a> •
+  <a href="#-ai-tools-cheatsheet">AI Tools</a> •
   <a href="#-comparison">Comparison</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-documentation">Docs</a> •
@@ -57,11 +58,7 @@ Or download the `.dmg` directly from the [releases page](https://github.com/vell
 
 ### Windows
 
-```powershell
-winget install Kubilitics.Kubilitics
-```
-
-Or download the `.msi` installer from the [releases page](https://github.com/vellankikoti/kubilitics/releases/latest).
+Download the `.msi` or `.exe` installer from the [releases page](https://github.com/vellankikoti/kubilitics/releases/latest) and run it — no admin rights required.
 
 ### Linux
 
@@ -337,6 +334,66 @@ kubilitics/
 | [Backup & Restore](docs/runbooks/backup-restore.md) | Database backup procedures |
 | [JWT Rotation](docs/runbooks/rotate-jwt-secrets.md) | Secret rotation runbook |
 | [SQLite → PostgreSQL](docs/runbooks/migrate-sqlite-postgresql.md) | Database migration guide |
+
+---
+
+## 🤖 AI Tools Cheatsheet
+
+Kubilitics ships a built-in AI brain (open at `Cmd+I` / `Ctrl+I`) backed by **55 verified MCP tools** across four categories. All tools are safety-gated and cluster-scoped to your active cluster.
+
+### Observation — read raw cluster state
+
+| Tool | What it does |
+|------|-------------|
+| `list_resources` | List any K8s resource kind (Pods, Deployments, Services, Nodes, …) |
+| `get_resource` | Full spec + status for a single named resource |
+| `get_logs` | Pod logs with optional container, tail count, and time filter |
+| `get_events` | Recent events filtered by namespace, object name, or reason |
+| `get_cluster_health` | Overall health score, node count, pod count, component statuses |
+| `get_topology` | Cluster topology graph — nodes, edges, and relationships |
+| `search_resources` | Cross-kind fuzzy search by name or label |
+| `observe_pod_metrics` | CPU + memory for a specific pod |
+| `observe_node_metrics` | CPU + memory for a specific node |
+| `observe_metrics` | CPU + memory for any resource kind |
+
+### Inspect — deep-dive on a specific resource
+
+27 `inspect_<kind>` tools that return enriched summaries, owner chains, health signals, and related resources — one per K8s kind:
+
+`inspect_pod` · `inspect_node` · `inspect_namespace` · `inspect_service` · `inspect_ingress` · `inspect_networkpolicy` · `inspect_deployment` · `inspect_replicaset` · `inspect_statefulset` · `inspect_daemonset` · `inspect_job` · `inspect_cronjob` · `inspect_pvc` · `inspect_pv` · `inspect_storageclass` · `inspect_role` · `inspect_rolebinding` · `inspect_clusterrole` · `inspect_clusterrolebinding` · `inspect_secret` · `inspect_configmap` · `inspect_limitrange` · `inspect_resourcequota` · `inspect_hpa` · `inspect_pdb` · `inspect_vpa` · `inspect_crd`
+
+### Analysis — AI-powered diagnostics
+
+| Tool | What it does |
+|------|-------------|
+| `analyze_pod_health` | Restart counts, OOMKills, eviction patterns in a namespace |
+| `analyze_deployment_health` | Rollout status, replica gaps, strategy issues |
+| `analyze_node_pressure` | Memory / disk / PID pressure and eviction risk |
+| `detect_resource_contention` | CPU/memory hot-spots and noisy neighbours |
+| `analyze_network_connectivity` | Service-to-pod reachability and endpoint health |
+| `analyze_rbac_permissions` | Permission gaps, over-privilege, and binding chains |
+| `analyze_storage_health` | PVC binding status, capacity, and reclaim policy issues |
+| `check_resource_limits` | Missing limits/requests and quota violations |
+| `analyze_hpa_behavior` | Scaling history, target drift, and thrash detection |
+| `analyze_log_patterns` | Error pattern extraction across pod logs |
+| `assess_security_posture` | Privilege escalation, host-path mounts, root containers |
+| `detect_configuration_drift` | Spec vs actual divergence across workloads |
+
+### Execution — safety-gated cluster mutations
+
+All execution tools require explicit user confirmation and pass through the safety engine before any change is made.
+
+| Tool | What it does |
+|------|-------------|
+| `restart_pod` | Delete a pod to trigger a clean restart |
+| `scale_deployment` | Set replica count on a Deployment |
+| `cordon_node` | Mark a node unschedulable |
+| `drain_node` | Evict pods and cordon a node for maintenance |
+| `rollback_deployment` | Roll back a Deployment to a previous revision |
+| `update_resource_limits` | Patch CPU/memory limits on a workload |
+| `apply_resource_patch` | Apply a strategic-merge patch to any resource |
+| `trigger_hpa_scale` | Force an HPA min/max adjustment |
+| `delete_resource` | Delete a named resource (requires double-confirm) |
 
 ---
 
