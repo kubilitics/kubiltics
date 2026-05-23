@@ -39,6 +39,7 @@ jobs:
           args: --verbose
         env:
           OUTPUT: CHANGELOG.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Open PR with regenerated changelog
         uses: peter-evans/create-pull-request@v7
