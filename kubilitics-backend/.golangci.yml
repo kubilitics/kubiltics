@@ -1,29 +1,26 @@
+version: "2"
+
 run:
   timeout: 5m
-  tests: false # Don't run linters on test files by default to reduce noise
+  tests: false
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - govet
-    - typecheck
     - errcheck
     - staticcheck
     - unused
     - gosimple
     - ineffassign
-
-linters-settings:
-  errcheck:
-    # Don't flag unchecked (http.ResponseWriter).Write — ubiquitous and safe
-    exclude-functions:
-      - (net/http.ResponseWriter).Write
-      - (*compress/gzip.Writer).Flush
-      - (*compress/gzip.Writer).Close
-      - (*encoding/json.Encoder).Encode
+  settings:
+    errcheck:
+      exclude-functions:
+        - (net/http.ResponseWriter).Write
+        - (*compress/gzip.Writer).Flush
+        - (*compress/gzip.Writer).Close
+        - (*encoding/json.Encoder).Encode
 
 issues:
-  exclude-use-default: false
-  # Allow CI to pass while violations are gradually fixed
   max-issues-per-linter: 50
   max-same-issues: 10
