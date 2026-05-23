@@ -60,17 +60,17 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Publishing for tag: $TAG"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ steps.target.outputs.tag }}
 
       - name: Install Helm
-        uses: azure/setup-helm@v4.3.0
+        uses: azure/setup-helm@v5
         with:
           version: '3.16.0'
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3.7.0
+        uses: sigstore/cosign-installer@v4
 
       - name: Add upstream Helm repos (for dependencies)
         run: |

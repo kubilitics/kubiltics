@@ -31,9 +31,9 @@ jobs:
 
     steps:
       - name: Checkout monorepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.25"
           cache: true
@@ -131,7 +131,7 @@ jobs:
 
       - name: Upload logs + results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chat-quality-results
           path: |
@@ -141,7 +141,7 @@ jobs:
 
       - name: Publish JUnit report
         if: always()
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: brain/chat_quality_results.xml
           fail_on_failure: true

@@ -51,10 +51,10 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up QEMU (for multi-platform docker run verification)
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -110,7 +110,7 @@ jobs:
 
       - name: Trivy scan backend image
         if: github.event_name == 'pull_request'
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: kubilitics-backend:pr-scan
           format: 'table'
@@ -129,7 +129,7 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Check if frontend Dockerfile exists
         id: check-frontend-dockerfile
