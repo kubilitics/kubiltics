@@ -7,10 +7,9 @@ run:
 linters:
   default: none
   enable:
-    - gosimple
+    - staticcheck
     - govet
     # - ineffassign  # Disabled to pass CI
-    # - staticcheck  # Disabled to pass CI
     # - unused       # Disabled to pass CI
     # - errcheck     # Disabled to pass CI
 
@@ -18,5 +17,5 @@ issues:
   max-issues-per-linter: 0
   max-same-issues: 0
   exclude-rules:
-    - linters: [gosimple]
+    - linters: [staticcheck]
       text: "S1009"
