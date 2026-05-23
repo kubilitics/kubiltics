@@ -17,13 +17,13 @@
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-multi-cluster-demo">Demo</a> •
+  <a href="#%EF%B8%8F-desktop-app-download">Desktop App</a> •
   <a href="#%EF%B8%8F-helm-deployment-in-cluster">Helm Deploy</a> •
-  <a href="#-desktop-app">Desktop</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-comparison">Comparison</a> •
   <a href="#-architecture">Architecture</a> •
-  <a href="#-documentation">Docs</a>
+  <a href="#-documentation">Docs</a> •
+  <a href="#-development">Development</a>
 </p>
 
 ---
@@ -40,122 +40,48 @@
 
 ---
 
-## 🚀 Quick Start
+## 🖥️ Desktop App — Download
 
-### Option 1: Web App (fastest — 2 minutes)
+The fastest way to get started. Signed, notarized releases — no server setup, no Docker, no `kubectl` wrangling needed. The backend runs as a bundled sidecar inside the app.
 
-```bash
-# 1. Start the backend
-cd kubilitics-backend
-go run ./cmd/server
-# Backend running at http://localhost:8190
+**[→ Download the latest release](https://github.com/vellankikoti/kubilitics/releases/latest)**
 
-# 2. Start the frontend (in a new terminal)
-cd kubilitics-frontend
-npm install && npm run dev
-# Open http://localhost:5173
-```
+### macOS
 
-On first visit, choose **Personal** (local kubeconfig) or **Team Server** (Helm in-cluster).
-Your `~/.kube/config` is auto-detected — clusters appear automatically on startup
-at `/clusters`. Pick one and you land on the dashboard; if the kubeconfig is
-empty you land on `/welcome` with one-click detection for common distros.
-
-### Option 2: Desktop App (macOS / Windows / Linux)
-
-Signed, notarized releases are published at
-[github.com/vellankikoti/kubilitics/releases/latest](https://github.com/vellankikoti/kubilitics/releases/latest).
-
-**macOS:**
 ```bash
 brew tap vellankikoti/kubilitics
 brew install --cask kubilitics
 ```
 
-**Windows:**
+Or download the `.dmg` directly from the [releases page](https://github.com/vellankikoti/kubilitics/releases/latest).
+
+### Windows
+
 ```powershell
 winget install Kubilitics.Kubilitics
 ```
 
-**Linux:** download the `.AppImage`, `.deb`, or `.rpm` from the releases page.
+Or download the `.msi` installer from the [releases page](https://github.com/vellankikoti/kubilitics/releases/latest).
 
-The desktop app bundles the backend as a sidecar — no separate server needed. To run from source during development, `cd kubilitics-desktop && npm install && cargo tauri dev`.
+### Linux
 
-### Option 3: Helm (In-Cluster Deployment)
+Download the `.AppImage`, `.deb`, or `.rpm` from the [releases page](https://github.com/vellankikoti/kubilitics/releases/latest).
 
-See [Helm Deployment](#%EF%B8%8F-helm-deployment-in-cluster) below.
+### What you get out of the box
 
----
+- **Auto-discovery** — detects `~/.kube/config` on launch; clusters appear instantly
+- **Sidecar backend** — Go backend + kcli bundled as child processes, no separate server
+- **Offline-first** — works without internet for local clusters
+- **Cross-platform** — macOS (.dmg), Windows (.msi), Linux (.deb / .AppImage / .rpm)
+- **Auto-update** — in-app updates delivered automatically on new releases
 
-## ✨ Features
-
-### Multi-Cluster Management
-
-Connect and switch between clusters instantly. Tested with:
-
-| Provider | Verified | Notes |
-|----------|----------|-------|
-| Docker Desktop | ✅ | Auto-detected from `~/.kube/config` |
-| AWS EKS | ✅ | Contexts from `aws eks update-kubeconfig` |
-| Azure AKS | ✅ | Contexts from `az aks get-credentials` |
-| GKE | ✅ | Contexts from `gcloud container clusters get-credentials` |
-| k3s / k3d | ✅ | Auto-detected |
-| kind | ✅ | Auto-detected |
-| Minikube | ✅ | Auto-detected |
-| Rancher / RKE2 | ✅ | Via kubeconfig |
-
-### Resource Intelligence (70+ Resource Types)
-
-Every Kubernetes resource type with real-time status, metrics, and drill-down:
-
-**Workloads** — Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, ReplicaSets
-**Networking** — Services, Ingresses, NetworkPolicies, EndpointSlices, Gateways (Gateway API)
-**Storage** — PVCs, PVs, StorageClasses, VolumeSnapshots, VolumeAttachments
-**Config** — ConfigMaps, Secrets, ResourceQuotas, LimitRanges, HPAs, VPAs
-**RBAC** — Roles, ClusterRoles, RoleBindings, ClusterRoleBindings, ServiceAccounts
-**CRDs** — Custom Resource Definitions with automatic discovery
-**Cluster** — Nodes, Namespaces, Events, Leases, PriorityClasses, RuntimeClasses
-
-### Topology Engine (5 View Modes)
-
-Interactive cluster topology powered by React Flow + ELK layout:
-
-- **Cluster View** — Full cluster graph with all resource relationships
-- **Namespace View** — Scoped to a namespace with inter-resource connections
-- **Workload View** — Deployment → ReplicaSet → Pod → Container chain
-- **Resource-Centric** — BFS traversal from any resource with configurable depth
-- **RBAC View** — ServiceAccount → Role → RoleBinding permission graph
-
-Export: PNG, SVG, JSON, CSV
-
-### CLI & Operations
-
-- **kcli** — Integrated kubectl with cluster context management
-- **Blast Radius Calculator** — Predict impact before making changes
-- **In-browser terminal** — Shell access with tab completion and context switching
-
-### Dashboard & Monitoring
-
-- Cluster health score with real-time metrics (CPU, Memory, Pod utilization)
-- Capacity planning with donut gauges and trend analysis
-- Fleet dashboard for multi-cluster overview
-- Event stream with severity filtering
-
-### Security & Auth
-
-- SSO / OIDC / SAML authentication
-- RBAC management (Admin / Operator / Viewer) with per-cluster permissions
-- Audit logging with CSV export
-- API key authentication for programmatic access
-- MFA / TOTP support
-
----
+On first launch, choose **Personal** (local kubeconfig) or **Team Server** (Helm in-cluster). Your `~/.kube/config` is auto-detected — clusters appear on the dashboard immediately.
 
 ---
 
 ## ⎈ Helm Deployment (In-Cluster)
 
-Deploy Kubilitics to your Kubernetes cluster for team-wide access.
+Deploy Kubilitics to your Kubernetes cluster for team-wide browser access.
 
 ### Prerequisites
 
@@ -229,28 +155,85 @@ Key configuration options:
 
 ---
 
-## 🖥️ Desktop App
+## ✨ Features
 
-Native desktop application built with Tauri 2.0 (Rust + WebView):
+### Multi-Cluster Management
 
-- **Auto-discovery** — detects `~/.kube/config` on launch
-- **Sidecar backend** — Go backend + kcli bundled as child processes
-- **Offline-first** — works without internet for local clusters
-- **Cross-platform** — macOS (.dmg), Windows (.msi), Linux (.deb/.AppImage)
+Connect and switch between clusters instantly. Tested with:
 
-### Build from Source
+| Provider | Verified | Notes |
+|----------|----------|-------|
+| Docker Desktop | ✅ | Auto-detected from `~/.kube/config` |
+| AWS EKS | ✅ | Contexts from `aws eks update-kubeconfig` |
+| Azure AKS | ✅ | Contexts from `az aks get-credentials` |
+| GKE | ✅ | Contexts from `gcloud container clusters get-credentials` |
+| k3s / k3d | ✅ | Auto-detected |
+| kind | ✅ | Auto-detected |
+| Minikube | ✅ | Auto-detected |
+| Rancher / RKE2 | ✅ | Via kubeconfig |
 
-```bash
-cd kubilitics-desktop
-npm install
-cargo tauri build
-```
+### Resource Intelligence (70+ Resource Types)
 
-| Platform | Output |
-|----------|--------|
-| macOS | `src-tauri/target/release/bundle/dmg/Kubilitics.dmg` |
-| Windows | `src-tauri/target/release/bundle/msi/Kubilitics.msi` |
-| Linux | `src-tauri/target/release/bundle/deb/kubilitics.deb` |
+Every Kubernetes resource type with real-time status, metrics, and drill-down:
+
+**Workloads** — Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, ReplicaSets
+**Networking** — Services, Ingresses, NetworkPolicies, EndpointSlices, Gateways (Gateway API)
+**Storage** — PVCs, PVs, StorageClasses, VolumeSnapshots, VolumeAttachments
+**Config** — ConfigMaps, Secrets, ResourceQuotas, LimitRanges, HPAs, VPAs
+**RBAC** — Roles, ClusterRoles, RoleBindings, ClusterRoleBindings, ServiceAccounts
+**CRDs** — Custom Resource Definitions with automatic discovery
+**Cluster** — Nodes, Namespaces, Events, Leases, PriorityClasses, RuntimeClasses
+
+### Topology Engine (5 View Modes)
+
+Interactive cluster topology powered by React Flow + ELK layout:
+
+- **Cluster View** — Full cluster graph with all resource relationships
+- **Namespace View** — Scoped to a namespace with inter-resource connections
+- **Workload View** — Deployment → ReplicaSet → Pod → Container chain
+- **Resource-Centric** — BFS traversal from any resource with configurable depth
+- **RBAC View** — ServiceAccount → Role → RoleBinding permission graph
+
+Export: PNG, SVG, JSON, CSV
+
+### CLI & Operations
+
+- **kcli** — Integrated kubectl with cluster context management
+- **Blast Radius Calculator** — Predict impact before making changes
+- **In-browser terminal** — Shell access with tab completion and context switching
+
+### Dashboard & Monitoring
+
+- Cluster health score with real-time metrics (CPU, Memory, Pod utilization)
+- Capacity planning with donut gauges and trend analysis
+- Fleet dashboard for multi-cluster overview
+- Event stream with severity filtering
+
+### Security & Auth
+
+- SSO / OIDC / SAML authentication
+- RBAC management (Admin / Operator / Viewer) with per-cluster permissions
+- Audit logging with CSV export
+- API key authentication for programmatic access
+- MFA / TOTP support
+
+---
+
+## 🔄 Comparison
+
+| Feature | Kubilitics | Lens | Headlamp | k9s |
+|---------|-----------|------|----------|-----|
+| Multi-cluster | ✅ Unified | ✅ | ⚠️ Limited | ❌ Single |
+| Web access | ✅ Browser + Desktop | ❌ Desktop only | ✅ Web | ❌ Terminal |
+| In-cluster deploy | ✅ Helm | ❌ | ✅ Helm | ❌ |
+| Topology visualization | ✅ 5 modes + export | ❌ | ❌ | ❌ |
+| Integrated CLI | ✅ kcli + shell | ❌ | ❌ | ❌ |
+| 70+ resource types | ✅ | ✅ | ⚠️ ~30 | ✅ |
+| Dark mode | ✅ System + manual | ✅ | ✅ | ✅ |
+| Open source | ✅ Apache 2.0 | ❌ Proprietary | ✅ Apache 2.0 | ✅ Apache 2.0 |
+| CRD support | ✅ Auto-discovery | ✅ | ⚠️ | ✅ |
+| RBAC management | ✅ Visual | ⚠️ | ❌ | ❌ |
+| Cost analysis | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -339,6 +322,44 @@ kubilitics/
 
 ---
 
+## 📖 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/ARCHITECTURE.md) | System design and component architecture |
+| [Integration Model](docs/INTEGRATION-MODEL.md) | Frontend ↔ Backend communication patterns |
+| [Topology API](docs/TOPOLOGY-API-CONTRACT.md) | Topology response shape (nodes, edges, metadata) |
+| [OpenAPI Spec](docs/api/openapi-spec.yaml) | REST API specification |
+| [Release Standards](docs/RELEASE-STANDARDS.md) | Pre-release gate and quality checklist |
+| [Helm Chart README](deploy/helm/kubilitics/README.md) | Chart configuration reference |
+| [PostgreSQL Guide](docs/guides/postgresql-deployment.md) | Production database setup |
+| [Horizontal Scaling](docs/guides/horizontal-scaling.md) | Multi-replica deployment |
+| [Backup & Restore](docs/runbooks/backup-restore.md) | Database backup procedures |
+| [JWT Rotation](docs/runbooks/rotate-jwt-secrets.md) | Secret rotation runbook |
+| [SQLite → PostgreSQL](docs/runbooks/migrate-sqlite-postgresql.md) | Database migration guide |
+
+---
+
+## 🚀 Quick Start (Web App / Source)
+
+If you'd prefer to run the web app from source rather than the desktop installer:
+
+```bash
+# Terminal 1: Backend
+cd kubilitics-backend
+go run ./cmd/server
+# Backend running at http://localhost:8190
+
+# Terminal 2: Frontend
+cd kubilitics-frontend
+npm install && npm run dev
+# Open http://localhost:5173
+```
+
+On first visit, choose **Personal** (local kubeconfig) or **Team Server** (Helm in-cluster). Your `~/.kube/config` is auto-detected — clusters appear automatically.
+
+---
+
 ## 🧪 Development
 
 ### Prerequisites
@@ -408,41 +429,11 @@ cd kubilitics-frontend && npm run build
 cd kubilitics-desktop && npm install && cargo tauri build
 ```
 
----
-
-## 📖 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Architecture](docs/ARCHITECTURE.md) | System design and component architecture |
-| [Integration Model](docs/INTEGRATION-MODEL.md) | Frontend ↔ Backend communication patterns |
-| [Topology API](docs/TOPOLOGY-API-CONTRACT.md) | Topology response shape (nodes, edges, metadata) |
-| [OpenAPI Spec](docs/api/openapi-spec.yaml) | REST API specification |
-| [Release Standards](docs/RELEASE-STANDARDS.md) | Pre-release gate and quality checklist |
-| [Helm Chart README](deploy/helm/kubilitics/README.md) | Chart configuration reference |
-| [PostgreSQL Guide](docs/guides/postgresql-deployment.md) | Production database setup |
-| [Horizontal Scaling](docs/guides/horizontal-scaling.md) | Multi-replica deployment |
-| [Backup & Restore](docs/runbooks/backup-restore.md) | Database backup procedures |
-| [JWT Rotation](docs/runbooks/rotate-jwt-secrets.md) | Secret rotation runbook |
-| [SQLite → PostgreSQL](docs/runbooks/migrate-sqlite-postgresql.md) | Database migration guide |
-
----
-
-## 🔄 Comparison
-
-| Feature | Kubilitics | Lens | Headlamp | k9s |
-|---------|-----------|------|----------|-----|
-| Multi-cluster | ✅ Unified | ✅ | ⚠️ Limited | ❌ Single |
-| Web access | ✅ Browser + Desktop | ❌ Desktop only | ✅ Web | ❌ Terminal |
-| In-cluster deploy | ✅ Helm | ❌ | ✅ Helm | ❌ |
-| Topology visualization | ✅ 5 modes + export | ❌ | ❌ | ❌ |
-| Integrated CLI | ✅ kcli + shell | ❌ | ❌ | ❌ |
-| 70+ resource types | ✅ | ✅ | ⚠️ ~30 | ✅ |
-| Dark mode | ✅ System + manual | ✅ | ✅ | ✅ |
-| Open source | ✅ Apache 2.0 | ❌ Proprietary | ✅ Apache 2.0 | ✅ Apache 2.0 |
-| CRD support | ✅ Auto-discovery | ✅ | ⚠️ | ✅ |
-| RBAC management | ✅ Visual | ⚠️ | ❌ | ❌ |
-| Cost analysis | ✅ | ❌ | ❌ | ❌ |
+| Platform | Output |
+|----------|--------|
+| macOS | `src-tauri/target/release/bundle/dmg/Kubilitics.dmg` |
+| Windows | `src-tauri/target/release/bundle/msi/Kubilitics.msi` |
+| Linux | `src-tauri/target/release/bundle/deb/kubilitics.deb` |
 
 ---
 
