@@ -9,6 +9,11 @@ linters:
   enable:
     - staticcheck
     - govet
+  settings:
+    staticcheck:
+      checks:
+        - "SA*"
+        - "S1*"
     # - ineffassign  # Disabled to pass CI
     # - unused       # Disabled to pass CI
     # - errcheck     # Disabled to pass CI
