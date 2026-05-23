@@ -172,11 +172,11 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "list_problems",
 		Category:    CategoryObservation,
-		Description: "Enumerate pods matching a problem filter (crashlooping, oom, pending, evicted, image_pull_error, unhealthy) ranked by severity. Replaces ad-hoc loops over observe_resources_by_query.",
+		Description: "Find BROKEN or UNHEALTHY pods only — use this when diagnosing issues, NOT for general pod listing. For 'list pods', 'show pods', 'get pods' always use list_resources(kind=Pod) instead. filter must be one of: crashlooping, oom, pending, evicted, image_pull_error, unhealthy.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"filter":     map[string]interface{}{"type": "string", "enum": []string{"crashlooping", "oom", "pending", "evicted", "image_pull_error", "unhealthy"}, "description": "Problem filter"},
+				"filter":     map[string]interface{}{"type": "string", "enum": []string{"crashlooping", "oom", "pending", "evicted", "image_pull_error", "unhealthy"}, "description": "Problem category to filter by. Must be one of: crashlooping, oom, pending, evicted, image_pull_error, unhealthy. Never use 'all'."},
 				"namespace":  map[string]interface{}{"type": "string", "description": "Optional namespace scope"},
 				"since":      map[string]interface{}{"type": "string", "description": "Go duration (15m, 1h) — optional"},
 				"limit":      map[string]interface{}{"type": "integer", "description": "Max entries; default 50, max 200"},

@@ -617,10 +617,14 @@ func timeFrom(m map[string]interface{}, k string) time.Time {
 func (s *mcpServerImpl) handleListProblems(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	filter := strArg(args, "filter")
 	if filter == "" {
-		return nil, fmt.Errorf("list_problems: 'filter' is required; one of: crashlooping, oom, pending, evicted, image_pull_error, unhealthy")
+		return nil, fmt.Errorf("list_problems: 'filter' is required; accepted: crashlooping, oom, pending, evicted, image_pull_error, unhealthy. To list ALL pods use list_resources(kind=Pod) instead")
+	}
+	// "all" is a common LLM mistake — redirect clearly rather than erroring.
+	if filter == "all" || filter == "any" || filter == "*" {
+		return nil, fmt.Errorf("list_problems does not support filter=%q. To list all pods use list_resources(kind=Pod). To find all problem pods call list_problems once per filter: crashlooping, oom, pending, evicted, image_pull_error, unhealthy", filter)
 	}
 	if problemPredicateName(filter) == "" {
-		return nil, fmt.Errorf("list_problems: unknown filter %q; accepted: crashlooping, oom, pending, evicted, image_pull_error, unhealthy", filter)
+		return nil, fmt.Errorf("list_problems: unknown filter %q; accepted: crashlooping, oom, pending, evicted, image_pull_error, unhealthy. To list ALL pods use list_resources(kind=Pod)", filter)
 	}
 
 	limit := intArgDefault(args, "limit", 50)
