@@ -47,7 +47,7 @@
 
 ## 📸 App Screens
 
-> **To view all 8 interactive screens:** open [`docs/assets/app-screens.html`](docs/assets/app-screens.html) in your browser. Each screen is 1280×800 and matches the real production UI.
+> **[→ View all 8 interactive screens](https://htmlpreview.github.io/?https://github.com/vellankikoti/kubilitics/blob/main/docs/assets/app-screens.html)** — use the nav bar at the top to switch between screens. Each is 1280×800 and matches the real production UI.
 
 **Cluster Dashboard** — health score, resource gauges, event feed, namespace breakdown
 
