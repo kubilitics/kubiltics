@@ -5690,37 +5690,112 @@ func (s *mcpServerImpl) handleExportTopologyToDrawio(ctx context.Context, args m
 	if err != nil {
 		return nil, err
 	}
+	namespace := strArg(args, "namespace")
 
+	// Try the backend draw.io export endpoint first.
 	drawioURL := c.baseURL + "/api/v1/clusters/" + url.PathEscape(clusterID) + "/topology/export/drawio?format=mermaid"
 	req, err := newHTTPRequest(ctx, "GET", drawioURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+	if err == nil {
+		if resp, doErr := c.httpClient.Do(req); doErr == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == 200 {
+				var result struct {
+					URL     string `json:"url"`
+					Mermaid string `json:"mermaid,omitempty"`
+				}
+				buf := make([]byte, 64*1024)
+				n, _ := resp.Body.Read(buf)
+				if jsonUnmarshal(buf[:n], &result) == nil {
+					return map[string]interface{}{
+						"url":         result.URL,
+						"mermaid":     result.Mermaid,
+						"data_source": "backend",
+						"message":     "Open this URL in a browser to view and edit the architecture diagram in draw.io",
+					}, nil
+				}
+			}
+		}
 	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get draw.io export: %w", err)
-	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("draw.io export failed (HTTP %d)", resp.StatusCode)
+	// Backend draw.io export not available — synthesize a Mermaid diagram from topology data.
+	topoPath := c.clusterPath(clusterID, "/topology")
+	if namespace != "" {
+		topoPath += "?namespace=" + url.QueryEscape(namespace)
+	}
+	var topo map[string]interface{}
+	if fetchErr := c.get(ctx, topoPath, &topo); fetchErr != nil {
+		return nil, fmt.Errorf("export_topology_to_drawio: topology fetch failed: %w", fetchErr)
 	}
 
-	var result struct {
-		URL     string `json:"url"`
-		Mermaid string `json:"mermaid,omitempty"`
+	nodes, _ := topo["nodes"].([]interface{})
+	edges, _ := topo["edges"].([]interface{})
+
+	// Build a compact Mermaid flowchart from the first 40 nodes to stay readable.
+	var sb strings.Builder
+	sb.WriteString("graph TD\n")
+	seen := map[string]bool{}
+	limit := 40
+	for i, nRaw := range nodes {
+		if i >= limit {
+			break
+		}
+		n, ok := nRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		id, _ := n["id"].(string)
+		kind, _ := n["kind"].(string)
+		name, _ := n["name"].(string)
+		if id == "" || name == "" {
+			continue
+		}
+		safe := mermaidID(id)
+		seen[id] = true
+		label := kind + "/" + name
+		sb.WriteString("  " + safe + "[\"" + label + "\"]\n")
 	}
-	// Decode using json
-	buf := make([]byte, 64*1024)
-	n, _ := resp.Body.Read(buf)
-	if err := jsonUnmarshal(buf[:n], &result); err != nil {
-		return nil, fmt.Errorf("failed to decode draw.io response: %w", err)
+	for _, eRaw := range edges {
+		e, ok := eRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		src, _ := e["source"].(string)
+		dst, _ := e["target"].(string)
+		if !seen[src] || !seen[dst] {
+			continue
+		}
+		sb.WriteString("  " + mermaidID(src) + " --> " + mermaidID(dst) + "\n")
 	}
+
+	note := ""
+	if len(nodes) > limit {
+		note = fmt.Sprintf("Showing %d of %d nodes. Use namespace parameter to filter.", limit, len(nodes))
+	}
+
 	return map[string]interface{}{
-		"url":     result.URL,
-		"message": "Open this URL in a browser to view and edit the architecture diagram in draw.io",
-		"mermaid": result.Mermaid,
+		"mermaid":     sb.String(),
+		"node_count":  len(nodes),
+		"edge_count":  len(edges),
+		"data_source": "topology_api_synthesized",
+		"derived_from": "GET " + topoPath,
+		"latency_ms":  0,
+		"note":        note,
+		"message":     "Paste the mermaid field into https://mermaid.live or draw.io to visualize the cluster topology.",
 	}, nil
+}
+
+// mermaidID converts a Kubernetes resource ID (e.g. "Pod/default/nginx") into a
+// safe Mermaid node identifier by replacing non-alphanumeric chars with underscores.
+func mermaidID(id string) string {
+	var b strings.Builder
+	for _, r := range id {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		} else {
+			b.WriteRune('_')
+		}
+	}
+	return b.String()
 }
 
 // ─── Updated createObservationHandler ─────────────────────────────────────────

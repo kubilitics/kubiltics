@@ -950,11 +950,11 @@ func (s *mcpServerImpl) analyzeSingleDeploymentHealth(ctx context.Context, clust
 	status, _ := deploy["status"].(map[string]interface{})
 	spec, _ := deploy["spec"].(map[string]interface{})
 
-	replicas := int(status["replicas"].(float64))
-	ready := int(status["readyReplicas"].(float64))
-	updated := int(status["updatedReplicas"].(float64))
-	available := int(status["availableReplicas"].(float64))
-	desired := int(spec["replicas"].(float64))
+	replicas := int(toF64(status["replicas"]))
+	ready := int(toF64(status["readyReplicas"]))
+	updated := int(toF64(status["updatedReplicas"]))
+	available := int(toF64(status["availableReplicas"]))
+	desired := int(toF64(spec["replicas"]))
 
 	issues := []map[string]interface{}{}
 	healthStatus := "Healthy"
@@ -1029,8 +1029,8 @@ func (s *mcpServerImpl) handleAnalyzeStatefulSetHealth(ctx context.Context, args
 	for _, item := range items {
 		if sts, ok := item.(map[string]interface{}); ok {
 			status, _ := sts["status"].(map[string]interface{})
-			ready := int(status["readyReplicas"].(float64))
-			replicas := int(status["replicas"].(float64))
+			ready := int(toF64(status["readyReplicas"]))
+			replicas := int(toF64(status["replicas"]))
 
 			if ready < replicas {
 				findings = append(findings, map[string]interface{}{
@@ -1515,8 +1515,8 @@ func (s *mcpServerImpl) handleAnalyzeDaemonSetHealth(ctx context.Context, args m
 	for _, item := range items {
 		if ds, ok := item.(map[string]interface{}); ok {
 			status, _ := ds["status"].(map[string]interface{})
-			desired := int(status["desiredNumberScheduled"].(float64))
-			ready := int(status["numberReady"].(float64))
+			desired := int(toF64(status["desiredNumberScheduled"]))
+			ready := int(toF64(status["numberReady"]))
 
 			if ready < desired {
 				findings = append(findings, map[string]interface{}{
@@ -1671,6 +1671,11 @@ func toFloat(v interface{}) (float64, bool) {
 		return float64(x), true
 	}
 	return 0, false
+}
+
+func toF64(v interface{}) float64 {
+	f, _ := toFloat(v)
+	return f
 }
 
 // ════════════════════════════════════════════════════════════════════════════
