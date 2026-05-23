@@ -47,23 +47,45 @@
 
 ## 📸 App Screens
 
-> **[→ View all 8 interactive screens](https://htmlpreview.github.io/?https://github.com/vellankikoti/kubilitics/blob/main/docs/assets/app-screens.html)** — use the nav bar at the top to switch between screens. Each is 1280×800 and matches the real production UI.
+### Cluster Dashboard
+Health score 98 (Grade A), capacity gauges, resource allocation, and health factor breakdown — all live.
 
-**Cluster Dashboard** — health score, resource gauges, event feed, namespace breakdown
+![Cluster Dashboard](docs/assets/screenshots/01-dashboard.png)
 
-**Fleet Overview** — all clusters at a glance with provider badges, health scores, and instant context-switching
+### Fleet Overview
+All clusters at a glance — nodes, pods, deployments, services, version, and health status in one view.
 
-**Topology View** — 5 view modes (Cluster / Namespace / Workload / RBAC / Resource-Centric) with export to PNG, SVG, JSON, CSV
+![Fleet Overview](docs/assets/screenshots/02-fleet.png)
 
-**Workloads Table** — all deployments with real-time CPU/memory bars, status badges, and one-click inspect/topology
+### AI Chat (`⌘I`)
+Ask anything about your cluster in plain English. The AI runs live MCP tools (`list_resources`, `analyze_pod_health`, …) and returns structured results — no kubectl needed.
 
-**Pod Detail** — containers, liveness probes, restart history, events, logs, metrics, YAML in one tabbed view
+![AI Chat Panel](docs/assets/screenshots/03-ai-chat.png)
 
-**AI Chat** (`⌘I`) — 55 MCP tools running live inside a chat panel; tool call blocks, safety confirmations, cluster-scoped context
+### Pods — Resource Intelligence
+32 pods across all namespaces with status badges (Running / OOMKilled), readiness, restart counts, and IP — filterable, sortable, exportable.
 
-**Events Stream** — 1,500+ events with type/reason/namespace filters and severity coloring
+![Pods List](docs/assets/screenshots/04-pods.png)
 
-**Blast Radius** — select any resource, see exactly what breaks and what gets disrupted, with AI-recommended safer paths
+### Pod Detail
+Full pod overview with breadcrumb navigation, QoS class, controlled-by chain, and tabbed access to Containers · Logs · Terminal · Metrics · Events · Traces · YAML · Topology · Blast Radius.
+
+![Pod Detail](docs/assets/screenshots/05-pod-detail.png)
+
+### Pod Metrics
+Real-time CPU / Memory / Network I/O with time-range selector (5m → 7d) and trend charts.
+
+![Pod Metrics](docs/assets/screenshots/06-pod-metrics.png)
+
+### Resource Topology
+Interactive graph showing every relationship a resource has — ServiceAccount, ReplicaSet, ConfigMap, Node, Namespace — with labeled edges and health indicators.
+
+![Resource Topology](docs/assets/screenshots/07-topology.png)
+
+### Blast Radius
+Criticality score, resilience rating, cluster impact %, exposure, and recovery estimate — plus a live topology graph and "Simulate Failure" mode.
+
+![Blast Radius](docs/assets/screenshots/08-blast-radius.png)
 
 ---
 
