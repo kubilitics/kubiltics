@@ -172,6 +172,12 @@ type Config struct {
 		PerUserMonthlyBudget  float64
 		PerInvestigationLimit int
 	}
+
+	// CertificationReportPath is the path to the tool-certifications.json report
+	// produced by the certify-tools CLI.  The MCP server reads this at startup
+	// and refreshes it every 5 minutes to gate destructive tool execution.
+	// Defaults to "reports/certification/tool-certifications.json".
+	CertificationReportPath string
 }
 
 // ConfigManager defines the interface for configuration access.

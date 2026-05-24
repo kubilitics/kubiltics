@@ -12,6 +12,7 @@ import (
 	"github.com/vellankikoti/kubilitics/brain/internal/config"
 	"github.com/vellankikoti/kubilitics/brain/internal/db"
 	"github.com/vellankikoti/kubilitics/brain/internal/integration/backend"
+	"github.com/vellankikoti/kubilitics/brain/internal/mcp/certification"
 	"github.com/vellankikoti/kubilitics/brain/internal/mcp/tools"
 	analysistools "github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/analysis"
 	executiontools "github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/execution"
@@ -112,6 +113,9 @@ type mcpServerImpl struct {
 
 	// Rate limiting
 	rateLimiter *rateLimiter
+
+	// Certification gate — checked before executing destructive tools.
+	certGate *certification.Gate
 }
 
 // toolRegistration holds the tool definition and handler.
@@ -149,6 +153,14 @@ func NewMCPServer(cfg *config.Config, backendProxy *backend.Proxy, auditLog audi
 		return nil, fmt.Errorf("failed to create safety engine: %w", err)
 	}
 
+	// Certification gate — reads report from configured path; falls back to
+	// permissive mode if the report has not been generated yet.
+	certReportPath := cfg.CertificationReportPath
+	if certReportPath == "" {
+		certReportPath = "reports/certification/tool-certifications.json"
+	}
+	certGate := certification.NewGate(certReportPath)
+
 	server := &mcpServerImpl{
 		config:         cfg,
 		backendProxy:   backendProxy,
@@ -159,6 +171,7 @@ func NewMCPServer(cfg *config.Config, backendProxy *backend.Proxy, auditLog audi
 		handlers:       make(map[string]ToolHandler),
 		stopChan:       make(chan struct{}),
 		rateLimiter:    newRateLimiter(100, time.Second), // 100 calls per second
+		certGate:       certGate,
 	}
 
 	server.stats.CallsByTool = make(map[string]int64)
@@ -257,6 +270,17 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		return nil, fmt.Errorf("tool not found: %s", toolName)
 	}
 
+	// Certification gate: block destructive tools that are Uncertified.
+	// Non-destructive tools are never blocked — the gate only enforces quality
+	// on tools that can mutate cluster state.
+	if reg.Tool.Destructive && s.certGate != nil {
+		if err := s.certGate.Check(toolName); err != nil {
+			s.recordFailure(toolName)
+			metrics.MCPToolCalls.WithLabelValues(toolName, "cert_blocked").Inc()
+			return nil, err
+		}
+	}
+
 	// Wildcard-arg guard: catch fabricated params like name="all" /
 	// namespace="*" before they reach the backend. Returns a structured
 	// rejection payload (not an error) so the LLM treats it as a normal
@@ -323,6 +347,11 @@ func (s *mcpServerImpl) Start(ctx context.Context) error {
 		WithCorrelationID(correlationID).
 		WithDescription("MCP Server started").
 		WithResult(audit.ResultSuccess))
+
+	// Start background certification gate refresh.
+	if s.certGate != nil {
+		s.certGate.Start(ctx)
+	}
 
 	return nil
 }
