@@ -606,8 +606,12 @@ func (s *mcpServerImpl) createCostHandler(toolDef *tools.ToolDefinition) ToolHan
 // createExecutionHandler creates a handler for safety-gated execution tools.
 func (s *mcpServerImpl) createExecutionHandler(toolDef *tools.ToolDefinition) ToolHandler {
 	name := toolDef.Name
-	if execHandler, ok := s.executionTools.HandlerMap()[name]; ok {
+	timeout := executiontools.ExecutionTimeout(toolDef.RequiredAutonomyLevel)
+
+	if execHandler, ok := s.executionTools.HardenedHandlerMap()[name]; ok {
 		return func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
 			return execHandler(ctx, args)
 		}
 	}
