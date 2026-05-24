@@ -13,6 +13,7 @@ import (
 	"github.com/vellankikoti/kubilitics/brain/internal/db"
 	"github.com/vellankikoti/kubilitics/brain/internal/integration/backend"
 	"github.com/vellankikoti/kubilitics/brain/internal/mcp/certification"
+	"github.com/vellankikoti/kubilitics/brain/internal/mcp/guardrails"
 	"github.com/vellankikoti/kubilitics/brain/internal/mcp/tools"
 	analysistools "github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/analysis"
 	executiontools "github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/execution"
@@ -116,6 +117,12 @@ type mcpServerImpl struct {
 
 	// Certification gate — checked before executing destructive tools.
 	certGate *certification.Gate
+
+	// AI guardrails — redaction, injection scanning, tool call budget.
+	guardrails *guardrails.Guardrails
+	// budget is a per-server budget; for session isolation callers should
+	// use guardrails.NewBudget() and pass it through context.
+	budget *guardrails.ToolCallBudget
 }
 
 // toolRegistration holds the tool definition and handler.
@@ -161,6 +168,8 @@ func NewMCPServer(cfg *config.Config, backendProxy *backend.Proxy, auditLog audi
 	}
 	certGate := certification.NewGate(certReportPath)
 
+	gr := guardrails.New(guardrails.DefaultConfig())
+
 	server := &mcpServerImpl{
 		config:         cfg,
 		backendProxy:   backendProxy,
@@ -172,6 +181,8 @@ func NewMCPServer(cfg *config.Config, backendProxy *backend.Proxy, auditLog audi
 		stopChan:       make(chan struct{}),
 		rateLimiter:    newRateLimiter(100, time.Second), // 100 calls per second
 		certGate:       certGate,
+		guardrails:     gr,
+		budget:         gr.NewBudget(),
 	}
 
 	server.stats.CallsByTool = make(map[string]int64)
@@ -291,6 +302,14 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		return rej.asToolResult(), nil
 	}
 
+	// AI guardrails — budget check before execution (fails fast on exhaustion).
+	if s.guardrails != nil {
+		if err := s.budget.Check(toolName); err != nil {
+			metrics.MCPToolCalls.WithLabelValues(toolName, "budget_exhausted").Inc()
+			return nil, err
+		}
+	}
+
 	// Log tool call start
 	s.auditLog.Log(ctx, audit.NewEvent(audit.EventActionProposed).
 		WithCorrelationID(correlationID).
@@ -301,6 +320,11 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 	result, err := reg.Handler(ctx, args)
 	duration := time.Since(startTime)
 	metrics.MCPToolDuration.WithLabelValues(toolName).Observe(duration.Seconds())
+
+	// AI guardrails — redaction + injection scan on output; consume budget on success.
+	if s.guardrails != nil {
+		result, err = s.guardrails.Apply(ctx, s.budget, toolName, result, err)
+	}
 
 	// Record statistics
 	if err != nil {
