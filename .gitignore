@@ -191,6 +191,8 @@ kubilitics-backend/server_v*
 !docs/**/*.md
 !deploy/**/*.md
 !kubilitics-frontend/docs/*.md
+!brain/docs/*.md
+!brain/docs/**/*.md
 
 # ── Misc temp/debug files ──────────────────────────────────────────────────
 body.json
