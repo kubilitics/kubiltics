@@ -143,6 +143,11 @@ type Config struct {
 	// MCP configuration
 	MCP struct {
 		Enabled bool
+		// MaxToolCallsPerSession caps the number of tool calls an LLM session
+		// can make before the budget guardrail blocks further execution.
+		// 0 disables the cap (useful for load tests and benchmarks).
+		// Defaults to 50 when unset in the config file.
+		MaxToolCallsPerSession int
 	}
 
 	// Analytics configuration

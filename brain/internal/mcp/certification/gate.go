@@ -138,6 +138,18 @@ func (g *Gate) Warn(toolName string) string {
 	return ""
 }
 
+// BlockedToolNames returns the names of tools that are currently blocked
+// by the certification gate (destructive + uncertified).
+func (g *Gate) BlockedToolNames() []string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	names := make([]string, 0, len(g.blocked))
+	for name := range g.blocked {
+		names = append(names, name)
+	}
+	return names
+}
+
 // Summary returns a snapshot of grade counts for health checks.
 func (g *Gate) Summary() map[string]int {
 	g.mu.RLock()

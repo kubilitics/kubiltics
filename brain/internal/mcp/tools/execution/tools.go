@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/vellankikoti/kubilitics/brain/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/metrics"
 	"github.com/vellankikoti/kubilitics/brain/internal/safety"
 )
 
@@ -115,6 +117,7 @@ func (t *ExecutionTools) HardenedHandlerMap() map[string]func(ctx context.Contex
 		out[toolName] = func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 			// Idempotency guard — reject duplicate ops within 60 s.
 			if err := t.idempotencyGuard.Check(toolName, args); err != nil {
+				metrics.IdempotencyHits.WithLabelValues(toolName).Inc()
 				return nil, err
 			}
 
@@ -123,6 +126,10 @@ func (t *ExecutionTools) HardenedHandlerMap() map[string]func(ctx context.Contex
 			elapsed := time.Since(start)
 
 			if err != nil {
+				// Distinguish deadline-exceeded from other errors for observability.
+				if errors.Is(err, context.DeadlineExceeded) {
+					metrics.ExecutionTimeouts.WithLabelValues(toolName).Inc()
+				}
 				return nil, err
 			}
 
