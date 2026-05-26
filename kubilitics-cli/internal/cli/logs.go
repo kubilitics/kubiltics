@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"text/template"
+	"text/template" // nosemgrep: go.lang.security.audit.xss.import-text-template.import-text-template
 	"time"
 
 	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/runner"

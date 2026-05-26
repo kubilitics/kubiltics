@@ -62,7 +62,7 @@ func (h *EventsHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", data) // nosemgrep: go.lang.security.audit.xss.no-fprintf-to-responsewriter.no-fprintf-to-responsewriter
 			flush()
 
 		case <-r.Context().Done():

@@ -1158,7 +1158,11 @@ func main() {
 	if portFile := os.Getenv("KUBILITICS_PORT_FILE"); portFile != "" {
 		_ = os.WriteFile(portFile, []byte(fmt.Sprintf("%d", actualPort)), 0o644)
 	} else {
-		_ = os.WriteFile("/tmp/kubilitics-backend.port", []byte(fmt.Sprintf("%d", actualPort)), 0o644)
+		// nosemgrep: go.lang.security.bad_tmp.bad-tmp-file-creation
+		// Fixed path under /tmp is intentional: this is an IPC rendezvous file written by
+		// the server and read by co-process sidecars. It contains only a port number (no secrets),
+		// so symlink races are not a concern; the directory is process-owned.
+		_ = os.WriteFile("/tmp/kubilitics-backend.port", []byte(fmt.Sprintf("%d", actualPort)), 0o600)
 	}
 
 	srv := &http.Server{

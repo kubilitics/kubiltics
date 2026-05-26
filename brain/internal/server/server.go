@@ -723,7 +723,8 @@ func (s *Server) handleAdminBudgetStatus(w http.ResponseWriter, r *http.Request)
 	if cr, ok := g.(capReader); ok {
 		cap = cr.Cap()
 	}
-	fmt.Fprintf(w, `{"spent_usd":%g,"cap_usd":%g}`, spent, cap)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]float64{"spent_usd": spent, "cap_usd": cap})
 }
 
 // handleAdminBudgetReset zeroes the gate accumulator.
@@ -754,9 +755,12 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 	llmConfigured := s.config.LLM.Configured
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"status":"healthy","llm_configured":%v,"llm_provider":%q,"timestamp":%q}`,
-		llmConfigured, s.config.LLM.Provider, time.Now().Format(time.RFC3339))
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"status":         "healthy",
+		"llm_configured": llmConfigured,
+		"llm_provider":   s.config.LLM.Provider,
+		"timestamp":      time.Now().Format(time.RFC3339),
+	})
 }
 
 // handleReady handles readiness check requests
@@ -772,16 +776,16 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	ready := s.running
 	s.mu.RUnlock()
 
+	w.Header().Set("Content-Type", "application/json")
 	if !ready {
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(`{"status":"not_ready"}`))
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "not_ready"})
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ready","timestamp":"` + time.Now().Format(time.RFC3339) + `"}`))
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"status":    "ready",
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
 }
 
 // handleInfo handles info requests
@@ -791,25 +795,16 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info := fmt.Sprintf(`{
-		"name":"Kubilitics AI",
-		"version":"0.1.0",
-		"llm_provider":"%s",
-		"safety_engine_enabled":%v,
-		"analytics_enabled":%v,
-		"autonomy_level":%d,
-		"timestamp":"%s"
-	}`,
-		s.config.LLM.Provider,
-		s.config.Safety.Enabled,
-		s.config.Analytics.Enabled,
-		s.config.Autonomy.DefaultLevel,
-		time.Now().Format(time.RFC3339),
-	)
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(info))
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"name":                   "Kubilitics AI",
+		"version":                "0.1.0",
+		"llm_provider":           s.config.LLM.Provider,
+		"safety_engine_enabled":  s.config.Safety.Enabled,
+		"analytics_enabled":      s.config.Analytics.Enabled,
+		"autonomy_level":         s.config.Autonomy.DefaultLevel,
+		"timestamp":              time.Now().Format(time.RFC3339),
+	})
 }
 
 // toMap safely converts an interface{} to map[string]interface{}.

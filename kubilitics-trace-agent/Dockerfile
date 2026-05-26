@@ -6,7 +6,9 @@ COPY . .
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /trace-agent ./cmd/agent/
 
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates \
+ && addgroup -S agent && adduser -S -G agent agent
 COPY --from=builder /trace-agent /usr/local/bin/trace-agent
+USER agent
 EXPOSE 4317 4318 9417
 ENTRYPOINT ["trace-agent"]

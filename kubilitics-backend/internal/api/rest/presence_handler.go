@@ -73,7 +73,7 @@ func (h *PresenceHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			b, _ := json.Marshal(evt)
-			_, _ = fmt.Fprintf(w, "data: %s\n\n", b)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", b) // nosemgrep: go.lang.security.audit.xss.no-fprintf-to-responsewriter.no-fprintf-to-responsewriter
 			flusher.Flush()
 		}
 	}

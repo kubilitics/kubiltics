@@ -79,7 +79,10 @@ func (e *APIError) Error() string { return fmt.Sprintf("hub %d %s: %s", e.Status
 //   - caBundlePath: path to a PEM CA bundle to pin; empty string uses system CAs.
 //   - insecure: if true, TLS certificate verification is skipped (dev only).
 func New(baseURL, caBundlePath string, insecure bool) (*Client, error) {
-	tlsCfg := &tls.Config{InsecureSkipVerify: insecure} //nolint:gosec // insecure is dev-only, gated by caller
+	tlsCfg := &tls.Config{ //nolint:gosec // InsecureSkipVerify is dev-only, gated by caller
+		InsecureSkipVerify: insecure,
+		MinVersion:         tls.VersionTLS12,
+	}
 	if caBundlePath != "" {
 		pem, err := os.ReadFile(caBundlePath)
 		if err != nil {

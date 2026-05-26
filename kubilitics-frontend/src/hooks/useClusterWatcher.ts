@@ -52,9 +52,7 @@ function dig(obj: Record<string, unknown>, ...keys: string[]): unknown {
   let current: unknown = obj;
   for (const key of keys) {
     if (current == null || typeof current !== 'object') return undefined;
-    // nosemgrep: javascript.lang.security.audit.prototype-pollution-loop.prototype-pollution-loop
-    // for...of loop (not for...in), and key comes from a typed string[] argument — not user input.
-    current = (current as Record<string, unknown>)[key];
+    current = (current as Record<string, unknown>)[key]; // nosemgrep: javascript.lang.security.audit.prototype-pollution.prototype-pollution-loop.prototype-pollution-loop
   }
   return current;
 }

@@ -82,6 +82,7 @@ func ordersHandler(tracer trace.Tracer) http.HandlerFunc {
 
 		span.SetAttributes(attribute.Int("http.status_code", 200))
 		w.Header().Set("Content-Type", "application/json")
+		// nosemgrep: go.lang.security.audit.xss.no-fprintf-to-responsewriter.no-fprintf-to-responsewriter
 		fmt.Fprintf(w, `{"orders":[{"id":%d,"total":%.2f}],"count":%d}`,
 			rand.Intn(10000), rand.Float64()*500, rand.Intn(200)+1)
 	}

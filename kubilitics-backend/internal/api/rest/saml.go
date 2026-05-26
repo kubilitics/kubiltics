@@ -108,6 +108,10 @@ func (h *SAMLHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// nosemgrep: go.lang.security.injection.open-redirect.open-redirect
+	// redirectURL is constructed by the crewjam/saml library from the server-configured IdP SSO URL,
+	// not from any user-supplied input. relayState is encoded into the query string but does not
+	// control the redirect destination host.
 	http.Redirect(w, r, redirectURL.String(), http.StatusFound)
 }
 

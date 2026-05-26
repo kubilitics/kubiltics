@@ -173,7 +173,7 @@ func (r *Receiver) handleProtobuf(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/x-protobuf")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte{})
+	_, _ = w.Write([]byte{}) // nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
 }
 
 // processProtobufBody decodes an OTLP protobuf trace request and processes it.

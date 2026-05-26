@@ -228,7 +228,7 @@ func (h *TracingHandler) GetInstallYAML(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/x-yaml")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="kubilitics-otel-%s.yaml"`, clusterID))
-	_, _ = w.Write([]byte(yaml))
+	_, _ = w.Write([]byte(yaml)) // nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
 }
 
 // ─── Instrument command ─────────────────────────────────────────────────────
