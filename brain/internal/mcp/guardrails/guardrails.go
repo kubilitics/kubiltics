@@ -22,6 +22,8 @@ package guardrails
 import (
 	"context"
 	"log"
+
+	"github.com/vellankikoti/kubilitics/brain/internal/metrics"
 )
 
 // Config controls guardrail behaviour.
@@ -67,6 +69,10 @@ func New(cfg Config) *Guardrails {
 	return g
 }
 
+// Cfg returns the configuration this Guardrails instance was created with.
+// Used by monitoring endpoints to report the active guardrail settings.
+func (g *Guardrails) Cfg() Config { return g.cfg }
+
 // NewBudget returns a fresh ToolCallBudget for a new session.
 // The caller (session or request handler) owns the lifetime of the budget.
 func (g *Guardrails) NewBudget() *ToolCallBudget {
@@ -106,6 +112,8 @@ func (g *Guardrails) Apply(
 		redacted, count := g.redactor.Redact(result)
 		if count > 0 {
 			log.Printf("[guardrails] redacted %d sensitive value(s) from %s output", count, toolName)
+			metrics.GuardrailRedactions.WithLabelValues(toolName).Inc()
+			metrics.GuardrailRedactedValues.WithLabelValues(toolName).Add(float64(count))
 		}
 		result = redacted
 	}
@@ -115,6 +123,9 @@ func (g *Guardrails) Apply(
 		sr := g.scanner.Scan(result)
 		if sr.Triggered {
 			log.Printf("[guardrails] injection detected in %s output: %v", toolName, sr.Detections)
+			for _, pattern := range sr.Detections {
+				metrics.GuardrailInjectionBlocks.WithLabelValues(toolName, pattern).Inc()
+			}
 		}
 		result = sr.Result
 	}

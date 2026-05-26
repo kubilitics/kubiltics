@@ -689,6 +689,13 @@ func (s *Server) registerHandlers(mux *http.ServeMux) {
 	// AISettingsPage's "Reset budget cap" control.
 	mux.HandleFunc("/admin/budget/status", s.handleAdminBudgetStatus)
 	mux.HandleFunc("/admin/budget/reset", s.handleAdminBudgetReset)
+
+	// Phase 7: MCP status endpoints.
+	// GET /api/v1/mcp/stats         → runtime stats + certification + budget
+	// GET /api/v1/mcp/certification → grade counts + blocked tools
+	// GET /api/v1/mcp/guardrails   → guardrail config + budget snapshot
+	mux.HandleFunc("/api/v1/mcp/", s.handleMCPDispatch)
+	mux.HandleFunc("/api/v1/mcp", s.handleMCPDispatch)
 }
 
 // handleAdminBudgetStatus returns the gate's running spend + active cap.

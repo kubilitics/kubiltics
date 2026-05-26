@@ -83,10 +83,15 @@ func (b *ToolCallBudget) Stats() map[string]interface{} {
 	for k, v := range b.perTool {
 		perTool[k] = v
 	}
+	remaining := max(0, b.limit-b.count)
+	if b.limit == 0 {
+		remaining = -1 // consistent with Remaining() when budget is disabled
+	}
 	return map[string]interface{}{
 		"total_calls": b.count,
 		"limit":       b.limit,
-		"remaining":   max(0, b.limit-b.count),
+		"remaining":   remaining,
+		"disabled":    b.limit == 0,
 		"per_tool":    perTool,
 	}
 }

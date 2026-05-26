@@ -119,6 +119,82 @@ var (
 		[]string{"tool"},
 	)
 
+	// ── Phase 8: Tool-hardening observability ────────────────────────────────
+
+	// Certification gate — emitted every time the gate blocks a destructive call.
+	CertGateBlocks = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kubilitics_ai_cert_gate_blocks_total",
+			Help: "Total calls blocked by the certification gate (destructive + uncertified tools).",
+		},
+		[]string{"tool"},
+	)
+
+	// MCPToolCallsByGrade tracks execution volume grouped by certification grade
+	// so operators can watch the Certified ratio grow over time.
+	MCPToolCallsByGrade = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kubilitics_ai_mcp_tool_calls_by_grade_total",
+			Help: "MCP tool calls broken down by certification grade (certified/provisional/uncertified).",
+		},
+		[]string{"tool", "grade"},
+	)
+
+	// Guardrail — redaction.
+	GuardrailRedactions = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kubilitics_ai_guardrail_redactions_total",
+			Help: "Tool results where at least one sensitive value was redacted.",
+		},
+		[]string{"tool"},
+	)
+
+	GuardrailRedactedValues = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kubilitics_ai_guardrail_redacted_values_total",
+			Help: "Total sensitive values (key matches + regex hits) redacted from tool results.",
+		},
+		[]string{"tool"},
+	)
+
+	// Guardrail — injection scanner.
+	GuardrailInjectionBlocks = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kubilitics_ai_guardrail_injection_blocks_total",
+			Help: "Prompt-injection patterns detected and neutralised in tool results.",
+		},
+		[]string{"tool", "pattern"},
+	)
+
+	// Guardrail — tool-call budget (MCP session budget, not LLM token budget).
+	MCPBudgetExhausted = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kubilitics_ai_mcp_budget_exhausted_total",
+			Help: "Times the per-session MCP tool-call budget was exhausted.",
+		},
+		[]string{"tool"},
+	)
+
+	// Execution — idempotency guard.
+	IdempotencyHits = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kubilitics_ai_idempotency_hits_total",
+			Help: "Duplicate destructive tool calls intercepted by the idempotency guard.",
+		},
+		[]string{"tool"},
+	)
+
+	// Execution — timeout.
+	ExecutionTimeouts = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kubilitics_ai_execution_timeouts_total",
+			Help: "Execution tool calls that were cancelled by the per-autonomy-level deadline.",
+		},
+		[]string{"tool"},
+	)
+
+	// ── End Phase 8 ───────────────────────────────────────────────────────────
+
 	// WebSocket metrics
 	WebSocketConnections = promauto.NewGauge(
 		prometheus.GaugeOpts{

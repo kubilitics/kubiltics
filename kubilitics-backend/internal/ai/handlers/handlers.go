@@ -44,6 +44,11 @@ func (h *Handlers) Register(mux muxHandleFunc) {
 	mux.HandleFunc("/ai/active-profile", h.GetActiveProfile)
 	mux.HandleFunc("/ai/validate", h.PostValidate)
 	mux.HandleFunc("/ai/budget", h.HandleBudget)
+
+	// Phase 7: MCP status proxy — forwards to brain's /api/v1/mcp/* endpoints.
+	mux.HandleFunc("/ai/mcp/stats", h.HandleMCPStatus)
+	mux.HandleFunc("/ai/mcp/certification", h.HandleMCPStatus)
+	mux.HandleFunc("/ai/mcp/guardrails", h.HandleMCPStatus)
 }
 
 // HandleBudget multiplexes GET (read current) and POST (persist new) for /ai/budget.

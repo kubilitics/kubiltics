@@ -57,6 +57,19 @@ type MCPServer interface {
 
 	// GetStats returns server statistics.
 	GetStats() map[string]interface{}
+
+	// GetCertificationSummary returns a snapshot of certification grade counts
+	// and the list of blocked tool names.
+	GetCertificationSummary() map[string]interface{}
+
+	// GetBudgetStats returns the current tool-call budget state for the server
+	// session (total, remaining, per-tool breakdown).
+	GetBudgetStats() map[string]interface{}
+
+	// GetGuardrailsConfig returns the active guardrail configuration flags
+	// (redactor, injection scanner, budget limit) so monitoring endpoints can
+	// report the live settings without hardcoding defaults.
+	GetGuardrailsConfig() map[string]interface{}
 }
 
 // Tool represents a single tool available to the LLM.
@@ -168,7 +181,13 @@ func NewMCPServer(cfg *config.Config, backendProxy *backend.Proxy, auditLog audi
 	}
 	certGate := certification.NewGate(certReportPath)
 
-	gr := guardrails.New(guardrails.DefaultConfig())
+	grCfg := guardrails.DefaultConfig()
+	if cfg.MCP.MaxToolCallsPerSession > 0 {
+		grCfg.MaxToolCallsPerSession = cfg.MCP.MaxToolCallsPerSession
+	} else if cfg.MCP.MaxToolCallsPerSession == -1 {
+		grCfg.MaxToolCallsPerSession = 0 // 0 disables the cap
+	}
+	gr := guardrails.New(grCfg)
 
 	server := &mcpServerImpl{
 		config:         cfg,
@@ -288,6 +307,7 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		if err := s.certGate.Check(toolName); err != nil {
 			s.recordFailure(toolName)
 			metrics.MCPToolCalls.WithLabelValues(toolName, "cert_blocked").Inc()
+			metrics.CertGateBlocks.WithLabelValues(toolName).Inc()
 			return nil, err
 		}
 	}
@@ -302,10 +322,12 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		return rej.asToolResult(), nil
 	}
 
-	// AI guardrails — budget check before execution (fails fast on exhaustion).
-	if s.guardrails != nil {
+	// AI guardrails — budget check before execution (fail-fast; prevents
+	// running the handler when the session budget is already exhausted).
+	if s.guardrails != nil && s.budget != nil {
 		if err := s.budget.Check(toolName); err != nil {
 			metrics.MCPToolCalls.WithLabelValues(toolName, "budget_exhausted").Inc()
+			metrics.MCPBudgetExhausted.WithLabelValues(toolName).Inc()
 			return nil, err
 		}
 	}
@@ -321,9 +343,14 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 	duration := time.Since(startTime)
 	metrics.MCPToolDuration.WithLabelValues(toolName).Observe(duration.Seconds())
 
-	// AI guardrails — redaction + injection scan on output; consume budget on success.
+	// AI guardrails — redaction + injection scan on output.
+	// Pass nil budget so Apply() does not re-check (already done above);
+	// consume budget manually after Apply() succeeds.
 	if s.guardrails != nil {
-		result, err = s.guardrails.Apply(ctx, s.budget, toolName, result, err)
+		result, err = s.guardrails.Apply(ctx, nil, toolName, result, err)
+		if err == nil && s.budget != nil {
+			s.budget.Consume(toolName)
+		}
 	}
 
 	// Record statistics
@@ -340,6 +367,10 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 
 	s.recordSuccess(toolName, duration)
 	metrics.MCPToolCalls.WithLabelValues(toolName, "success").Inc()
+	if s.certGate != nil {
+		grade := string(s.certGate.Grade(toolName))
+		metrics.MCPToolCallsByGrade.WithLabelValues(toolName, grade).Inc()
+	}
 	s.auditLog.Log(ctx, audit.NewEvent(audit.EventActionExecuted).
 		WithCorrelationID(correlationID).
 		WithDescription(fmt.Sprintf("Tool executed successfully: %s", toolName)).
@@ -430,6 +461,51 @@ func (s *mcpServerImpl) GetStats() map[string]interface{} {
 		"success_rate":     fmt.Sprintf("%.2f%%", successRate),
 		"avg_duration":     s.stats.AvgDuration.String(),
 		"calls_by_tool":    s.stats.CallsByTool,
+	}
+}
+
+// GetCertificationSummary returns grade counts and blocked tool names.
+func (s *mcpServerImpl) GetCertificationSummary() map[string]interface{} {
+	if s.certGate == nil {
+		return map[string]interface{}{
+			"enabled": false,
+		}
+	}
+	summary := s.certGate.Summary()
+	blockedNames := s.certGate.BlockedToolNames()
+	return map[string]interface{}{
+		"enabled":       true,
+		"certified":     summary["certified"],
+		"provisional":   summary["provisional"],
+		"uncertified":   summary["uncertified"],
+		"blocked":       summary["blocked"],
+		"blocked_tools": blockedNames,
+	}
+}
+
+// GetBudgetStats returns the tool-call budget snapshot for this server session.
+func (s *mcpServerImpl) GetBudgetStats() map[string]interface{} {
+	if s.budget == nil {
+		return map[string]interface{}{
+			"enabled": false,
+		}
+	}
+	stats := s.budget.Stats()
+	stats["enabled"] = true
+	return stats
+}
+
+// GetGuardrailsConfig returns the active guardrail configuration flags.
+func (s *mcpServerImpl) GetGuardrailsConfig() map[string]interface{} {
+	if s.guardrails == nil {
+		return map[string]interface{}{"enabled": false}
+	}
+	cfg := s.guardrails.Cfg()
+	return map[string]interface{}{
+		"enabled":                    true,
+		"redactor_enabled":           cfg.EnableRedactor,
+		"injection_scanner_enabled":  cfg.EnableInjectionScanner,
+		"max_tool_calls_per_session": cfg.MaxToolCallsPerSession,
 	}
 }
 

@@ -92,6 +92,18 @@ func (p *Proxy) Capabilities(ctx context.Context, clusterID string) (*kotgv1.AIC
 	return caps, err
 }
 
+// GetMCPEndpoint forwards a GET to the brain's HTTP server at the given path
+// and returns the decoded JSON payload.  Used by the backend MCP status proxy.
+func (p *Proxy) GetMCPEndpoint(ctx context.Context, path string) (map[string]interface{}, error) {
+	start := time.Now()
+	data, err := p.http.GetMCPEndpoint(ctx, path)
+	proxyDuration.WithLabelValues("mcp_endpoint", statusLabel(err)).Observe(time.Since(start).Seconds())
+	if err != nil {
+		proxyErrors.WithLabelValues("mcp_endpoint", statusLabel(err)).Inc()
+	}
+	return data, err
+}
+
 // Status returns the AI runtime status via the HTTP control-plane endpoint.
 func (p *Proxy) Status(ctx context.Context) (*aiclient.Status, error) {
 	start := time.Now()
