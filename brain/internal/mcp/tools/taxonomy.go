@@ -56,6 +56,30 @@ type ToolDefinition struct {
 // 7. Cross-Resource Analysis: Understanding relationships and dependencies
 // 8. Natural Language: Conversational interface over CLI commands
 
+// nsSchema returns a standard namespace-scoped InputSchema map for tools that
+// operate on a namespace (or cluster-wide when namespace is omitted).
+func nsSchema(extras map[string]interface{}) map[string]interface{} {
+	props := map[string]interface{}{
+		"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional — defaults to active cluster)"},
+		"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (optional — all namespaces when omitted)"},
+	}
+	for k, v := range extras {
+		props[k] = v
+	}
+	return map[string]interface{}{"type": "object", "properties": props}
+}
+
+// clusterSchema returns a cluster-scoped InputSchema (no namespace arg).
+func clusterSchema(extras map[string]interface{}) map[string]interface{} {
+	props := map[string]interface{}{
+		"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional — defaults to active cluster)"},
+	}
+	for k, v := range extras {
+		props[k] = v
+	}
+	return map[string]interface{}{"type": "object", "properties": props}
+}
+
 var ToolTaxonomy = []ToolDefinition{
 	// === OBSERVATION TOOLS (15 tools) ===
 	// Read-only cluster state queries with intelligent filtering
@@ -103,6 +127,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "export_topology_to_drawio",
 		Category:    CategoryObservation,
 		Description: "Export cluster topology as an editable diagram. Returns a draw.io URL that opens the architecture diagram in a new tab. Use when user asks for 'architecture diagram', 'show me the topology', or 'export to draw.io'.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  false,
 	},
@@ -884,6 +909,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to analyze (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific pod name to focus on"},
 			},
@@ -899,6 +926,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to analyze (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific deployment name to focus on"},
 			},
@@ -914,6 +943,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific ReplicaSet name"},
 			},
@@ -929,6 +960,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific Job name"},
 			},
@@ -944,6 +977,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific CronJob name"},
 			},
@@ -959,6 +994,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to analyze (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific StatefulSet name to focus on"},
 			},
@@ -974,6 +1011,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to analyze (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific DaemonSet name to focus on"},
 			},
@@ -989,6 +1028,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"name": map[string]interface{}{"type": "string", "description": "Optional specific node name to analyze"},
 			},
 		},
@@ -1002,6 +1043,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to scan for resource contention (required)"},
 			},
 			"required": []string{"namespace"},
@@ -1016,6 +1059,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific service name; if omitted, analyzes all services in namespace"},
 			},
@@ -1031,6 +1076,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific Ingress name; if omitted, analyzes all Ingresses in namespace"},
 			},
@@ -1046,6 +1093,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to analyze (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific service name to focus on"},
 			},
@@ -1061,6 +1110,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace":            map[string]interface{}{"type": "string", "description": "Kubernetes namespace to analyze (required)"},
 				"service_account_name": map[string]interface{}{"type": "string", "description": "Optional specific service account name to focus on"},
 			},
@@ -1076,6 +1127,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to analyze (required)"},
 			},
 			"required": []string{"namespace"},
@@ -1090,6 +1143,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to check (required)"},
 			},
 			"required": []string{"namespace"},
@@ -1104,6 +1159,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to analyze (required)"},
 				"name":      map[string]interface{}{"type": "string", "description": "Optional specific HPA name to focus on"},
 			},
@@ -1119,6 +1176,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace":      map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
 				"pod_name":       map[string]interface{}{"type": "string", "description": "Pod name to analyze logs from (required)"},
 				"container_name": map[string]interface{}{"type": "string", "description": "Optional specific container name within the pod"},
@@ -1136,6 +1195,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace to assess (required)"},
 			},
 			"required": []string{"namespace"},
@@ -1150,6 +1211,8 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+
 				"namespace":     map[string]interface{}{"type": "string", "description": "Kubernetes namespace of the resource (required)"},
 				"kind":          map[string]interface{}{"type": "string", "description": "Resource kind (e.g., Deployment, ConfigMap) (required)"},
 				"name":          map[string]interface{}{"type": "string", "description": "Resource name (required)"},
@@ -1168,6 +1231,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_resource_efficiency",
 		Category:    CategoryAnalysis,
 		Description: "Analyze resource requests vs actual usage with rightsizing recommendations.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1175,6 +1239,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_failure_patterns",
 		Category:    CategoryAnalysis,
 		Description: "Detect recurring failure patterns across pods, deployments, and nodes.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1182,6 +1247,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_dependencies",
 		Category:    CategoryAnalysis,
 		Description: "Map service dependencies and identify potential single points of failure.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1194,6 +1260,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_capacity_trends",
 		Category:    CategoryAnalysis,
 		Description: "Predict future capacity needs based on historical trends and growth patterns.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1201,6 +1268,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_performance_bottlenecks",
 		Category:    CategoryAnalysis,
 		Description: "Identify performance bottlenecks across compute, network, and storage.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1208,6 +1276,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_error_correlation",
 		Category:    CategoryAnalysis,
 		Description: "Correlate errors across logs, events, and metrics to find root causes.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1232,6 +1301,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_rollout_risk",
 		Category:    CategoryAnalysis,
 		Description: "Assess risk of deployments, updates, and configuration changes.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1239,6 +1309,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_pod_scheduling",
 		Category:    CategoryAnalysis,
 		Description: "Analyze pod scheduling decisions, affinity rules, and placement optimization.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1246,6 +1317,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_image_vulnerabilities",
 		Category:    CategoryAnalysis,
 		Description: "Scan container images for vulnerabilities with severity prioritization.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1253,6 +1325,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "analyze_workload_patterns",
 		Category:    CategoryAnalysis,
 		Description: "Identify traffic patterns, peak hours, and scaling opportunities.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1284,6 +1357,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:                  "recommend_resource_optimization",
 		Category:              CategoryRecommendation,
 		Description:           "Generate actionable recommendations for resource optimization (CPU, memory, storage).",
+		InputSchema:           nsSchema(nil),
 		Destructive:           false,
 		RequiresAI:            true,
 		RequiredAutonomyLevel: 2,
@@ -1292,6 +1366,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "recommend_cost_reduction",
 		Category:    CategoryRecommendation,
 		Description: "Identify cost-saving opportunities with projected savings estimates.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1299,6 +1374,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "recommend_security_hardening",
 		Category:    CategoryRecommendation,
 		Description: "Provide security hardening recommendations based on best practices and CVEs.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1306,6 +1382,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "recommend_scaling_strategy",
 		Category:    CategoryRecommendation,
 		Description: "Suggest HPA/VPA configurations and scaling strategies based on workload patterns.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1313,6 +1390,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "recommend_architecture_improvements",
 		Category:    CategoryRecommendation,
 		Description: "Suggest architectural improvements for resilience, performance, and cost.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1320,6 +1398,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "recommend_upgrade_path",
 		Category:    CategoryRecommendation,
 		Description: "Plan Kubernetes and application upgrade paths with risk assessment.",
+		InputSchema: clusterSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1327,6 +1406,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "recommend_monitoring_improvements",
 		Category:    CategoryRecommendation,
 		Description: "Suggest monitoring, alerting, and observability enhancements.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1334,6 +1414,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "recommend_disaster_recovery",
 		Category:    CategoryRecommendation,
 		Description: "Provide disaster recovery and backup strategy recommendations.",
+		InputSchema: clusterSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1341,30 +1422,30 @@ var ToolTaxonomy = []ToolDefinition{
 	// === NARRATIVE TOOLS — Phase 3 C5 (10 tools) ===
 	// Each gathers scoped data + a narrative_prompt for the LLM to
 	// render human-ready text. Category: Analysis.
-	{Name: "narrate_incident_timeline", Category: CategoryAnalysis, Description: "Slack-ready chronological incident summary from events within a window.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_deploy_diff", Category: CategoryAnalysis, Description: "Plain-English description of what changed between a deployment's two most recent revisions and the likely impact.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_weekly_status", Category: CategoryAnalysis, Description: "Exec-friendly weekly cluster status: health headline, top changes, top issues, call-outs.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_onboarding_for_user", Category: CategoryAnalysis, Description: "What this ServiceAccount can touch — roles bound, resources + verbs, namespaces reached. Flags cluster-admin.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_service_dependency_graph", Category: CategoryAnalysis, Description: "Upstream/downstream dependencies of a service, with policies that gate each edge.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_capacity_report", Category: CategoryAnalysis, Description: "Cluster-wide capacity report: per-node utilization, headroom, trend.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_cost_report", Category: CategoryAnalysis, Description: "Cost breakdown by namespace/workload with biggest driver + cut opportunity.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_security_posture", Category: CategoryAnalysis, Description: "CISO-ready posture: pod security, network-policy coverage, RBAC, secrets. One next step per area.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_migration_readiness", Category: CategoryAnalysis, Description: "What to move for a namespace migration — workloads, stateful data, config, known risks.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "narrate_change_impact", Category: CategoryAnalysis, Description: "What-if textual report reasoning about first- and second-order effects of a hypothetical change.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_incident_timeline", Category: CategoryAnalysis, Description: "Slack-ready chronological incident summary from events within a window.", InputSchema: nsSchema(map[string]interface{}{"window_minutes": map[string]interface{}{"type": "integer"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_deploy_diff", Category: CategoryAnalysis, Description: "Plain-English description of what changed between a deployment's two most recent revisions and the likely impact.", InputSchema: nsSchema(map[string]interface{}{"deployment": map[string]interface{}{"type": "string"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_weekly_status", Category: CategoryAnalysis, Description: "Exec-friendly weekly cluster status: health headline, top changes, top issues, call-outs.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_onboarding_for_user", Category: CategoryAnalysis, Description: "What this ServiceAccount can touch — roles bound, resources + verbs, namespaces reached. Flags cluster-admin.", InputSchema: nsSchema(map[string]interface{}{"service_account": map[string]interface{}{"type": "string"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_service_dependency_graph", Category: CategoryAnalysis, Description: "Upstream/downstream dependencies of a service, with policies that gate each edge.", InputSchema: nsSchema(map[string]interface{}{"service": map[string]interface{}{"type": "string"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_capacity_report", Category: CategoryAnalysis, Description: "Cluster-wide capacity report: per-node utilization, headroom, trend.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_cost_report", Category: CategoryAnalysis, Description: "Cost breakdown by namespace/workload with biggest driver + cut opportunity.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_security_posture", Category: CategoryAnalysis, Description: "CISO-ready posture: pod security, network-policy coverage, RBAC, secrets. One next step per area.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_migration_readiness", Category: CategoryAnalysis, Description: "What to move for a namespace migration — workloads, stateful data, config, known risks.", InputSchema: nsSchema(map[string]interface{}{"source_namespace": map[string]interface{}{"type": "string"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_change_impact", Category: CategoryAnalysis, Description: "What-if textual report reasoning about first- and second-order effects of a hypothetical change.", InputSchema: nsSchema(map[string]interface{}{"what_if": map[string]interface{}{"type": "string"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
 
 	// === PLANNING TOOLS — Phase 3 C3 (10 tools) ===
 	// "What would happen if?" planners — gather state and emit a
 	// planning_hint for the LLM to narrate. Autonomy Level: 2 (Recommend).
-	{Name: "plan_scale_deployment", Category: CategoryRecommendation, Description: "Plan a replica-count change for a deployment using observed CPU/memory utilization and HPA constraints.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_drain_node", Category: CategoryRecommendation, Description: "What would happen if we drained this node? Lists evictions, PDB conflicts, singletons, and other-node capacity.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_rollout_safety", Category: CategoryRecommendation, Description: "Estimate blast radius of rolling out a new image tag for a deployment. Recommends canary %, maxSurge, and pre-flight checks.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_cost_reduction", Category: CategoryRecommendation, Description: "Identify cost-reduction candidates: idle nodes, Released PVs, over-replicated workloads, rightsizing opportunities.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_ha_upgrade", Category: CategoryRecommendation, Description: "Find singletons (replicas=1 without PDB/anti-affinity) and recommend a zero-downtime HA upgrade per workload.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_resource_quota", Category: CategoryRecommendation, Description: "Suggest ResourceQuota values per namespace based on 30-day observed usage (CPU/memory/pod/PVC counts).", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_psa_enforcement", Category: CategoryRecommendation, Description: "Which namespaces can safely move to pod-security.kubernetes.io/enforce=restricted? Flags which pods would violate.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_image_pull_secrets", Category: CategoryRecommendation, Description: "Find duplicate pull secrets across namespaces and suggest consolidation patterns.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_backup_coverage", Category: CategoryRecommendation, Description: "Identify stateful workloads whose PVCs lack backup annotations/labels. Prioritizes StatefulSets over Deployments.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
-	{Name: "plan_pdb_coverage", Category: CategoryRecommendation, Description: "Deployments / StatefulSets with replicas>=2 and no matching PDB. Suggests minAvailable for each.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_scale_deployment", Category: CategoryRecommendation, Description: "Plan a replica-count change for a deployment using observed CPU/memory utilization and HPA constraints.", InputSchema: nsSchema(map[string]interface{}{"deployment": map[string]interface{}{"type": "string"}, "target_replicas": map[string]interface{}{"type": "integer"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_drain_node", Category: CategoryRecommendation, Description: "What would happen if we drained this node? Lists evictions, PDB conflicts, singletons, and other-node capacity.", InputSchema: clusterSchema(map[string]interface{}{"name": map[string]interface{}{"type": "string"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_rollout_safety", Category: CategoryRecommendation, Description: "Estimate blast radius of rolling out a new image tag for a deployment. Recommends canary %, maxSurge, and pre-flight checks.", InputSchema: nsSchema(map[string]interface{}{"deployment": map[string]interface{}{"type": "string"}, "new_image": map[string]interface{}{"type": "string"}}), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_cost_reduction", Category: CategoryRecommendation, Description: "Identify cost-reduction candidates: idle nodes, Released PVs, over-replicated workloads, rightsizing opportunities.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_ha_upgrade", Category: CategoryRecommendation, Description: "Find singletons (replicas=1 without PDB/anti-affinity) and recommend a zero-downtime HA upgrade per workload.", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_resource_quota", Category: CategoryRecommendation, Description: "Suggest ResourceQuota values per namespace based on 30-day observed usage (CPU/memory/pod/PVC counts).", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_psa_enforcement", Category: CategoryRecommendation, Description: "Which namespaces can safely move to pod-security.kubernetes.io/enforce=restricted? Flags which pods would violate.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_image_pull_secrets", Category: CategoryRecommendation, Description: "Find duplicate pull secrets across namespaces and suggest consolidation patterns.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_backup_coverage", Category: CategoryRecommendation, Description: "Identify stateful workloads whose PVCs lack backup annotations/labels. Prioritizes StatefulSets over Deployments.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_pdb_coverage", Category: CategoryRecommendation, Description: "Deployments / StatefulSets with replicas>=2 and no matching PDB. Suggests minAvailable for each.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
 
 	// === TROUBLESHOOTING TOOLS (7 tools) ===
 	// Problem detection and resolution
@@ -1374,6 +1455,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:                  "troubleshoot_pod_failures",
 		Category:              CategoryTroubleshooting,
 		Description:           "Autonomous investigation of pod failures with root cause analysis and fix suggestions.",
+		InputSchema:           nsSchema(nil),
 		Destructive:           false,
 		RequiresAI:            true,
 		RequiredAutonomyLevel: 2,
@@ -1382,6 +1464,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "troubleshoot_network_issues",
 		Category:    CategoryTroubleshooting,
 		Description: "Diagnose network connectivity, DNS, and service discovery issues.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1389,6 +1472,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "troubleshoot_performance_degradation",
 		Category:    CategoryTroubleshooting,
 		Description: "Investigate performance issues with metric correlation and bottleneck identification.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1396,6 +1480,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "troubleshoot_deployment_failures",
 		Category:    CategoryTroubleshooting,
 		Description: "Analyze failed deployments, rollouts, and update issues with remediation steps.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1403,6 +1488,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "troubleshoot_resource_constraints",
 		Category:    CategoryTroubleshooting,
 		Description: "Identify resource exhaustion, OOM kills, and capacity issues.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1410,6 +1496,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "troubleshoot_rbac_issues",
 		Category:    CategoryTroubleshooting,
 		Description: "Debug RBAC permission issues and suggest proper role configurations.",
+		InputSchema: clusterSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1417,6 +1504,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "troubleshoot_storage_issues",
 		Category:    CategoryTroubleshooting,
 		Description: "Diagnose PV/PVC issues, mount failures, and storage provisioning problems.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1502,6 +1590,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:                  "security_scan_cluster",
 		Category:              CategorySecurity,
 		Description:           "Comprehensive cluster security scan with CIS benchmarks and compliance checks.",
+		InputSchema:           nsSchema(nil),
 		Destructive:           false,
 		RequiresAI:            true,
 		RequiredAutonomyLevel: 2,
@@ -1510,6 +1599,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "security_audit_rbac",
 		Category:    CategorySecurity,
 		Description: "Audit RBAC configurations, identify overprivileged accounts and security risks.",
+		InputSchema: clusterSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1517,6 +1607,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "security_scan_secrets",
 		Category:    CategorySecurity,
 		Description: "Scan for exposed secrets, weak encryption, and secret management issues.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1524,6 +1615,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "security_check_pod_security",
 		Category:    CategorySecurity,
 		Description: "Validate pod security policies, admission controls, and runtime security.",
+		InputSchema: nsSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1531,6 +1623,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "security_compliance_report",
 		Category:    CategorySecurity,
 		Description: "Generate compliance reports for SOC2, HIPAA, PCI-DSS, etc.",
+		InputSchema: clusterSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1538,16 +1631,16 @@ var ToolTaxonomy = []ToolDefinition{
 	// === COMPLIANCE CHECKS — Phase 3 C4 (10 tools) ===
 	// Deterministic rule-based hygiene checks. Each returns
 	// {findings:[], summary:"..."} with no LLM synthesis required.
-	{Name: "check_privileged_containers", Category: CategorySecurity, Description: "Pods running privileged containers or with hostNetwork/hostPID set. Returns per-pod findings.", Destructive: false, RequiresAI: false},
-	{Name: "check_root_containers", Category: CategorySecurity, Description: "Containers without runAsNonRoot=true that may execute as UID 0.", Destructive: false, RequiresAI: false},
-	{Name: "check_writable_root_fs", Category: CategorySecurity, Description: "Containers without readOnlyRootFilesystem=true.", Destructive: false, RequiresAI: false},
-	{Name: "check_capabilities_all_added", Category: CategorySecurity, Description: "Containers that add CAP_SYS_ADMIN or ALL.", Destructive: false, RequiresAI: false},
-	{Name: "check_host_path_mounts", Category: CategorySecurity, Description: "Pods mounting host paths (container-escape risk surface).", Destructive: false, RequiresAI: false},
-	{Name: "check_default_service_accounts_in_use", Category: CategorySecurity, Description: "Workloads using the 'default' ServiceAccount instead of a dedicated one.", Destructive: false, RequiresAI: false},
-	{Name: "check_secrets_in_env", Category: CategorySecurity, Description: "Containers that reference Secret keys via env vars instead of file mounts.", Destructive: false, RequiresAI: false},
-	{Name: "check_image_tag_latest", Category: CategorySecurity, Description: "Workloads whose images have no tag or are pinned to :latest.", Destructive: false, RequiresAI: false},
-	{Name: "check_ingress_tls_expiry_30d", Category: CategorySecurity, Description: "Ingress TLS certificates expiring within 30 days. Uses the /tls-info subresource for each ingress.", Destructive: false, RequiresAI: false},
-	{Name: "check_rbac_wildcards", Category: CategorySecurity, Description: "Roles / ClusterRoles with verbs:['*'] or resources:['*'] rules.", Destructive: false, RequiresAI: false},
+	{Name: "check_privileged_containers", Category: CategorySecurity, Description: "Pods running privileged containers or with hostNetwork/hostPID set. Returns per-pod findings.", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_root_containers", Category: CategorySecurity, Description: "Containers without runAsNonRoot=true that may execute as UID 0.", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_writable_root_fs", Category: CategorySecurity, Description: "Containers without readOnlyRootFilesystem=true.", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_capabilities_all_added", Category: CategorySecurity, Description: "Containers that add CAP_SYS_ADMIN or ALL.", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_host_path_mounts", Category: CategorySecurity, Description: "Pods mounting host paths (container-escape risk surface).", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_default_service_accounts_in_use", Category: CategorySecurity, Description: "Workloads using the 'default' ServiceAccount instead of a dedicated one.", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_secrets_in_env", Category: CategorySecurity, Description: "Containers that reference Secret keys via env vars instead of file mounts.", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_image_tag_latest", Category: CategorySecurity, Description: "Workloads whose images have no tag or are pinned to :latest.", InputSchema: nsSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_ingress_tls_expiry_30d", Category: CategorySecurity, Description: "Ingress TLS certificates expiring within 30 days. Uses the /tls-info subresource for each ingress.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: false},
+	{Name: "check_rbac_wildcards", Category: CategorySecurity, Description: "Roles / ClusterRoles with verbs:['*'] or resources:['*'] rules.", InputSchema: clusterSchema(nil), Destructive: false, RequiresAI: false},
 
 	// === COST TOOLS (4 tools) ===
 	// Resource optimization and cost analysis
@@ -1557,6 +1650,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:                  "cost_analyze_spending",
 		Category:              CategoryCost,
 		Description:           "Analyze cluster costs with breakdown by namespace, workload, and and resource type.",
+		InputSchema:           clusterSchema(nil),
 		Destructive:           false,
 		RequiresAI:            true,
 		RequiredAutonomyLevel: 2,
@@ -1565,6 +1659,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "cost_identify_waste",
 		Category:    CategoryCost,
 		Description: "Identify wasted resources: over-provisioned pods, unused PVs, idle nodes.",
+		InputSchema: clusterSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1572,6 +1667,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "cost_forecast_spending",
 		Category:    CategoryCost,
 		Description: "Forecast future costs based on trends and planned changes.",
+		InputSchema: clusterSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1579,11 +1675,12 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "cost_optimization_plan",
 		Category:    CategoryCost,
 		Description: "Generate comprehensive cost optimization plan with ROI estimates.",
+		InputSchema: clusterSchema(nil),
 		Destructive: false,
 		RequiresAI:  true,
 	},
 
-	// === AUTOMATION TOOLS (3 tools) ===
+	// === AUTOMATION TOOLS (4 tools) ===
 	// Multi-step automation workflows
 	// Autonomy Level: 4 (Act)
 
@@ -1591,6 +1688,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:                  "automation_run_playbook",
 		Category:              CategoryAutomation,
 		Description:           "Run a predefined remediation playbook (e.g., 'clear-logs', 'restart-deployment', 'cordon-node').",
+		InputSchema:           nsSchema(map[string]interface{}{"playbook": map[string]interface{}{"type": "string"}}),
 		Destructive:           false,
 		RequiresAI:            true,
 		RequiredAutonomyLevel: 4,
@@ -1599,6 +1697,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "automation_schedule_task",
 		Category:    CategoryAutomation,
 		Description: "Schedule recurring tasks like backups, cleanups, and health checks.",
+		InputSchema: nsSchema(map[string]interface{}{"task": map[string]interface{}{"type": "string"}, "schedule": map[string]interface{}{"type": "string"}}),
 		Destructive: false,
 		RequiresAI:  false,
 	},
@@ -1606,6 +1705,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "automation_create_alert_rule",
 		Category:    CategoryAutomation,
 		Description: "Create intelligent alert rules with auto-remediation triggers.",
+		InputSchema: nsSchema(map[string]interface{}{"alert_name": map[string]interface{}{"type": "string"}, "condition": map[string]interface{}{"type": "string"}}),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1613,6 +1713,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Name:        "automation_generate_runbook",
 		Category:    CategoryAutomation,
 		Description: "Generate runbooks for common operational scenarios.",
+		InputSchema: nsSchema(map[string]interface{}{"scenario": map[string]interface{}{"type": "string"}}),
 		Destructive: false,
 		RequiresAI:  true,
 	},
@@ -1632,6 +1733,7 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":    map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":     map[string]interface{}{"type": "string", "description": "Pod namespace (required)"},
 				"name":          map[string]interface{}{"type": "string", "description": "Pod name to restart (required)"},
 				"justification": map[string]interface{}{"type": "string", "description": "Reason for restart (recommended for audit log)"},
@@ -1639,8 +1741,9 @@ var ToolTaxonomy = []ToolDefinition{
 			},
 			"required": []string{"namespace", "name"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 4,
 	},
 	{
 		Name:     "scale_deployment",
@@ -1650,6 +1753,7 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":    map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":     map[string]interface{}{"type": "string", "description": "Deployment namespace (required)"},
 				"name":          map[string]interface{}{"type": "string", "description": "Deployment name (required)"},
 				"replicas":      map[string]interface{}{"type": "integer", "description": "Target replica count (required)", "minimum": 0},
@@ -1658,8 +1762,9 @@ var ToolTaxonomy = []ToolDefinition{
 			},
 			"required": []string{"namespace", "name", "replicas"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 4,
 	},
 	{
 		Name:     "cordon_node",
@@ -1669,14 +1774,16 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":    map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"name":          map[string]interface{}{"type": "string", "description": "Node name to cordon (required)"},
 				"justification": map[string]interface{}{"type": "string", "description": "Reason for cordoning"},
 				"dry_run":       map[string]interface{}{"type": "boolean", "description": "Preview changes without executing"},
 			},
 			"required": []string{"name"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 4,
 	},
 	{
 		Name:     "drain_node",
@@ -1686,6 +1793,7 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":           map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"name":                 map[string]interface{}{"type": "string", "description": "Node name to drain (required)"},
 				"grace_period_seconds": map[string]interface{}{"type": "integer", "description": "Grace period for pod eviction in seconds (default: 30)"},
 				"ignore_daemon_sets":   map[string]interface{}{"type": "boolean", "description": "Ignore DaemonSet-managed pods (default: true)"},
@@ -1695,8 +1803,9 @@ var ToolTaxonomy = []ToolDefinition{
 			},
 			"required": []string{"name"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 4,
 	},
 	{
 		Name:     "apply_resource_patch",
@@ -1706,6 +1815,7 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":    map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":     map[string]interface{}{"type": "string", "description": "Resource namespace"},
 				"kind":          map[string]interface{}{"type": "string", "description": "Resource kind (e.g., Deployment) (required)"},
 				"name":          map[string]interface{}{"type": "string", "description": "Resource name (required)"},
@@ -1716,8 +1826,9 @@ var ToolTaxonomy = []ToolDefinition{
 			},
 			"required": []string{"kind", "name", "patch"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 4,
 	},
 	{
 		Name:     "delete_resource",
@@ -1727,6 +1838,7 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":           map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":            map[string]interface{}{"type": "string", "description": "Resource namespace"},
 				"kind":                 map[string]interface{}{"type": "string", "description": "Resource kind (required)"},
 				"name":                 map[string]interface{}{"type": "string", "description": "Resource name (required)"},
@@ -1736,8 +1848,9 @@ var ToolTaxonomy = []ToolDefinition{
 			},
 			"required": []string{"kind", "name"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 5,
 	},
 	{
 		Name:     "rollback_deployment",
@@ -1747,6 +1860,7 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":    map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":     map[string]interface{}{"type": "string", "description": "Deployment namespace (required)"},
 				"name":          map[string]interface{}{"type": "string", "description": "Deployment name (required)"},
 				"revision":      map[string]interface{}{"type": "integer", "description": "Revision to roll back to (0 = previous revision)"},
@@ -1755,8 +1869,9 @@ var ToolTaxonomy = []ToolDefinition{
 			},
 			"required": []string{"namespace", "name"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 4,
 	},
 	{
 		Name:     "update_resource_limits",
@@ -1766,6 +1881,7 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":     map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":      map[string]interface{}{"type": "string", "description": "Workload namespace (required)"},
 				"kind":           map[string]interface{}{"type": "string", "description": "Resource kind: Deployment, StatefulSet, DaemonSet (required)"},
 				"name":           map[string]interface{}{"type": "string", "description": "Workload name (required)"},
@@ -1779,8 +1895,9 @@ var ToolTaxonomy = []ToolDefinition{
 			},
 			"required": []string{"namespace", "kind", "name", "container_name"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 4,
 	},
 	{
 		Name:     "trigger_hpa_scale",
@@ -1790,6 +1907,7 @@ var ToolTaxonomy = []ToolDefinition{
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
+				"cluster_id":      map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":       map[string]interface{}{"type": "string", "description": "HPA namespace (required)"},
 				"name":            map[string]interface{}{"type": "string", "description": "HPA name (required)"},
 				"target_replicas": map[string]interface{}{"type": "integer", "description": "Target replica count (required)", "minimum": 0},
@@ -1798,8 +1916,9 @@ var ToolTaxonomy = []ToolDefinition{
 			},
 			"required": []string{"namespace", "name", "target_replicas"},
 		},
-		Destructive: true,
-		RequiresAI:  false,
+		Destructive:           true,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 4,
 	},
 }
 

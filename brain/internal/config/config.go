@@ -143,6 +143,11 @@ type Config struct {
 	// MCP configuration
 	MCP struct {
 		Enabled bool
+		// MaxToolCallsPerSession caps the number of tool calls an LLM session
+		// can make before the budget guardrail blocks further execution.
+		// 0 disables the cap (useful for load tests and benchmarks).
+		// Defaults to 50 when unset in the config file.
+		MaxToolCallsPerSession int
 	}
 
 	// Analytics configuration
@@ -172,6 +177,12 @@ type Config struct {
 		PerUserMonthlyBudget  float64
 		PerInvestigationLimit int
 	}
+
+	// CertificationReportPath is the path to the tool-certifications.json report
+	// produced by the certify-tools CLI.  The MCP server reads this at startup
+	// and refreshes it every 5 minutes to gate destructive tool execution.
+	// Defaults to "reports/certification/tool-certifications.json".
+	CertificationReportPath string
 }
 
 // ConfigManager defines the interface for configuration access.

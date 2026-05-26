@@ -1,0 +1,4728 @@
+{
+  "generated_at": "2026-05-24T03:16:57.21323Z",
+  "total_tools": 157,
+  "certified": 0,
+  "provisional": 0,
+  "uncertified": 157,
+  "tools": [
+    {
+      "tool_name": "analyze_blast_radius",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_capacity_trends",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_cronjob_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_daemonset_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_dependencies",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_deployment_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_error_correlation",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_failure_patterns",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_hpa_behavior",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_image_vulnerabilities",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_ingress_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_job_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_log_patterns",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_network_connectivity",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_node_pressure",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_performance_bottlenecks",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_pod_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_pod_scheduling",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_rbac_permissions",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_replicaset_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_resource_efficiency",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_rollout_risk",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_service_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_statefulset_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_storage_health",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "analyze_workload_patterns",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "apply_resource_patch",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "assess_security_posture",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "automation_create_alert_rule",
+      "category": "automation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "automation_generate_runbook",
+      "category": "automation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "automation_run_playbook",
+      "category": "automation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "automation_schedule_task",
+      "category": "automation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_capabilities_all_added",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_default_service_accounts_in_use",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_host_path_mounts",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_image_tag_latest",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_ingress_tls_expiry_30d",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_privileged_containers",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_rbac_wildcards",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_resource_limits",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_root_containers",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_secrets_in_env",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "check_writable_root_fs",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "cordon_node",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "cost_analyze_spending",
+      "category": "cost",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "cost_forecast_spending",
+      "category": "cost",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "cost_identify_waste",
+      "category": "cost",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "cost_optimization_plan",
+      "category": "cost",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "delete_resource",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "detect_configuration_drift",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "detect_resource_contention",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_certificate_failures",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_cronjob_missing_runs",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_deployment_rollback_needed",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_hpa_not_scaling",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_ingress_404",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_networkpolicy_blocking",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_node_unschedulable",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_pod_not_ready",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_pvc_pending",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "diagnose_service_no_endpoints",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "drain_node",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "export_topology_to_drawio",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_clusterrole",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_clusterrolebinding",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_configmap",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_crd",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_cronjob",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_daemonset",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_deployment",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_hpa",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_ingress",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_job",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_limitrange",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_namespace",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_networkpolicy",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_node",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_pdb",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_pod",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_pv",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_pvc",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_replicaset",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_resourcequota",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_role",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_rolebinding",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_secret",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_service",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_statefulset",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_storageclass",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "inspect_vpa",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "list_problems",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_capacity_report",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_change_impact",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_cost_report",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_deploy_diff",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_incident_timeline",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_migration_readiness",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_onboarding_for_user",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_security_posture",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_service_dependency_graph",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "narrate_weekly_status",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_flapping_services",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_high_cardinality_labels",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_ingresses_by_tls_expiry",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_missing_probes",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_node_metrics",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_noisy_neighbors",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_orphaned_pods",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_pending_scheduler_events",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_pod_metrics",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_recent_changes",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_restart_storms",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_secrets_usage",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_services_by_filter",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_stuck_rollouts",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_top_pods_by_metric",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_unhealthy_probes",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "observe_zombie_finalizers",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_backup_coverage",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_cost_reduction",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_drain_node",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_ha_upgrade",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_image_pull_secrets",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_pdb_coverage",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_psa_enforcement",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_resource_quota",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_rollout_safety",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "plan_scale_deployment",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "recommend_architecture_improvements",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "recommend_cost_reduction",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "recommend_disaster_recovery",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "recommend_monitoring_improvements",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "recommend_resource_optimization",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "recommend_scaling_strategy",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "recommend_security_hardening",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "recommend_upgrade_path",
+      "category": "recommendation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "resolve_resource",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "restart_pod",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "rollback_deployment",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "scale_deployment",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "search_logs",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "security_audit_rbac",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "security_check_pod_security",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "security_compliance_report",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "security_scan_cluster",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "security_scan_secrets",
+      "category": "security",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "triage_cluster",
+      "category": "observation",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "trigger_hpa_scale",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "troubleshoot_deployment_failures",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "troubleshoot_network_issues",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "troubleshoot_performance_degradation",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "troubleshoot_pod_failures",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "troubleshoot_rbac_issues",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "troubleshoot_resource_constraints",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "troubleshoot_storage_issues",
+      "category": "troubleshooting",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "update_resource_limits",
+      "category": "execution",
+      "destructive": true,
+      "grade": "uncertified",
+      "score": 40,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": true,
+          "score": 100,
+          "details": "Skipped (destructive tool — live execution requires human approval)"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    },
+    {
+      "tool_name": "who_can_do",
+      "category": "analysis",
+      "destructive": false,
+      "grade": "uncertified",
+      "score": 0,
+      "signals": [
+        {
+          "name": "contract",
+          "pass": false,
+          "details": "Contract tests not run or failed"
+        },
+        {
+          "name": "live_validation",
+          "pass": false,
+          "details": "Live validation not run for this tool"
+        },
+        {
+          "name": "statement_coverage",
+          "pass": false,
+          "details": "0.0% statement coverage"
+        },
+        {
+          "name": "chaos_resilience",
+          "pass": false,
+          "details": "Chaos tests not run"
+        }
+      ],
+      "certified_at": "2026-05-24T03:16:57.21323Z"
+    }
+  ]
+}

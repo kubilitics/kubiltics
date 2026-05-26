@@ -12,6 +12,8 @@ import (
 	"github.com/vellankikoti/kubilitics/brain/internal/config"
 	"github.com/vellankikoti/kubilitics/brain/internal/db"
 	"github.com/vellankikoti/kubilitics/brain/internal/integration/backend"
+	"github.com/vellankikoti/kubilitics/brain/internal/mcp/certification"
+	"github.com/vellankikoti/kubilitics/brain/internal/mcp/guardrails"
 	"github.com/vellankikoti/kubilitics/brain/internal/mcp/tools"
 	analysistools "github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/analysis"
 	executiontools "github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/execution"
@@ -55,6 +57,19 @@ type MCPServer interface {
 
 	// GetStats returns server statistics.
 	GetStats() map[string]interface{}
+
+	// GetCertificationSummary returns a snapshot of certification grade counts
+	// and the list of blocked tool names.
+	GetCertificationSummary() map[string]interface{}
+
+	// GetBudgetStats returns the current tool-call budget state for the server
+	// session (total, remaining, per-tool breakdown).
+	GetBudgetStats() map[string]interface{}
+
+	// GetGuardrailsConfig returns the active guardrail configuration flags
+	// (redactor, injection scanner, budget limit) so monitoring endpoints can
+	// report the live settings without hardcoding defaults.
+	GetGuardrailsConfig() map[string]interface{}
 }
 
 // Tool represents a single tool available to the LLM.
@@ -112,6 +127,15 @@ type mcpServerImpl struct {
 
 	// Rate limiting
 	rateLimiter *rateLimiter
+
+	// Certification gate — checked before executing destructive tools.
+	certGate *certification.Gate
+
+	// AI guardrails — redaction, injection scanning, tool call budget.
+	guardrails *guardrails.Guardrails
+	// budget is a per-server budget; for session isolation callers should
+	// use guardrails.NewBudget() and pass it through context.
+	budget *guardrails.ToolCallBudget
 }
 
 // toolRegistration holds the tool definition and handler.
@@ -149,6 +173,22 @@ func NewMCPServer(cfg *config.Config, backendProxy *backend.Proxy, auditLog audi
 		return nil, fmt.Errorf("failed to create safety engine: %w", err)
 	}
 
+	// Certification gate — reads report from configured path; falls back to
+	// permissive mode if the report has not been generated yet.
+	certReportPath := cfg.CertificationReportPath
+	if certReportPath == "" {
+		certReportPath = "reports/certification/tool-certifications.json"
+	}
+	certGate := certification.NewGate(certReportPath)
+
+	grCfg := guardrails.DefaultConfig()
+	if cfg.MCP.MaxToolCallsPerSession > 0 {
+		grCfg.MaxToolCallsPerSession = cfg.MCP.MaxToolCallsPerSession
+	} else if cfg.MCP.MaxToolCallsPerSession == -1 {
+		grCfg.MaxToolCallsPerSession = 0 // 0 disables the cap
+	}
+	gr := guardrails.New(grCfg)
+
 	server := &mcpServerImpl{
 		config:         cfg,
 		backendProxy:   backendProxy,
@@ -159,6 +199,9 @@ func NewMCPServer(cfg *config.Config, backendProxy *backend.Proxy, auditLog audi
 		handlers:       make(map[string]ToolHandler),
 		stopChan:       make(chan struct{}),
 		rateLimiter:    newRateLimiter(100, time.Second), // 100 calls per second
+		certGate:       certGate,
+		guardrails:     gr,
+		budget:         gr.NewBudget(),
 	}
 
 	server.stats.CallsByTool = make(map[string]int64)
@@ -257,6 +300,18 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		return nil, fmt.Errorf("tool not found: %s", toolName)
 	}
 
+	// Certification gate: block destructive tools that are Uncertified.
+	// Non-destructive tools are never blocked — the gate only enforces quality
+	// on tools that can mutate cluster state.
+	if reg.Tool.Destructive && s.certGate != nil {
+		if err := s.certGate.Check(toolName); err != nil {
+			s.recordFailure(toolName)
+			metrics.MCPToolCalls.WithLabelValues(toolName, "cert_blocked").Inc()
+			metrics.CertGateBlocks.WithLabelValues(toolName).Inc()
+			return nil, err
+		}
+	}
+
 	// Wildcard-arg guard: catch fabricated params like name="all" /
 	// namespace="*" before they reach the backend. Returns a structured
 	// rejection payload (not an error) so the LLM treats it as a normal
@@ -265,6 +320,16 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		s.recordSuccess(toolName, 0)
 		metrics.MCPToolCalls.WithLabelValues(toolName, "rejected_wildcard").Inc()
 		return rej.asToolResult(), nil
+	}
+
+	// AI guardrails — budget check before execution (fail-fast; prevents
+	// running the handler when the session budget is already exhausted).
+	if s.guardrails != nil && s.budget != nil {
+		if err := s.budget.Check(toolName); err != nil {
+			metrics.MCPToolCalls.WithLabelValues(toolName, "budget_exhausted").Inc()
+			metrics.MCPBudgetExhausted.WithLabelValues(toolName).Inc()
+			return nil, err
+		}
 	}
 
 	// Log tool call start
@@ -277,6 +342,16 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 	result, err := reg.Handler(ctx, args)
 	duration := time.Since(startTime)
 	metrics.MCPToolDuration.WithLabelValues(toolName).Observe(duration.Seconds())
+
+	// AI guardrails — redaction + injection scan on output.
+	// Pass nil budget so Apply() does not re-check (already done above);
+	// consume budget manually after Apply() succeeds.
+	if s.guardrails != nil {
+		result, err = s.guardrails.Apply(ctx, nil, toolName, result, err)
+		if err == nil && s.budget != nil {
+			s.budget.Consume(toolName)
+		}
+	}
 
 	// Record statistics
 	if err != nil {
@@ -292,6 +367,10 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 
 	s.recordSuccess(toolName, duration)
 	metrics.MCPToolCalls.WithLabelValues(toolName, "success").Inc()
+	if s.certGate != nil {
+		grade := string(s.certGate.Grade(toolName))
+		metrics.MCPToolCallsByGrade.WithLabelValues(toolName, grade).Inc()
+	}
 	s.auditLog.Log(ctx, audit.NewEvent(audit.EventActionExecuted).
 		WithCorrelationID(correlationID).
 		WithDescription(fmt.Sprintf("Tool executed successfully: %s", toolName)).
@@ -323,6 +402,11 @@ func (s *mcpServerImpl) Start(ctx context.Context) error {
 		WithCorrelationID(correlationID).
 		WithDescription("MCP Server started").
 		WithResult(audit.ResultSuccess))
+
+	// Start background certification gate refresh.
+	if s.certGate != nil {
+		s.certGate.Start(ctx)
+	}
 
 	return nil
 }
@@ -377,6 +461,51 @@ func (s *mcpServerImpl) GetStats() map[string]interface{} {
 		"success_rate":     fmt.Sprintf("%.2f%%", successRate),
 		"avg_duration":     s.stats.AvgDuration.String(),
 		"calls_by_tool":    s.stats.CallsByTool,
+	}
+}
+
+// GetCertificationSummary returns grade counts and blocked tool names.
+func (s *mcpServerImpl) GetCertificationSummary() map[string]interface{} {
+	if s.certGate == nil {
+		return map[string]interface{}{
+			"enabled": false,
+		}
+	}
+	summary := s.certGate.Summary()
+	blockedNames := s.certGate.BlockedToolNames()
+	return map[string]interface{}{
+		"enabled":       true,
+		"certified":     summary["certified"],
+		"provisional":   summary["provisional"],
+		"uncertified":   summary["uncertified"],
+		"blocked":       summary["blocked"],
+		"blocked_tools": blockedNames,
+	}
+}
+
+// GetBudgetStats returns the tool-call budget snapshot for this server session.
+func (s *mcpServerImpl) GetBudgetStats() map[string]interface{} {
+	if s.budget == nil {
+		return map[string]interface{}{
+			"enabled": false,
+		}
+	}
+	stats := s.budget.Stats()
+	stats["enabled"] = true
+	return stats
+}
+
+// GetGuardrailsConfig returns the active guardrail configuration flags.
+func (s *mcpServerImpl) GetGuardrailsConfig() map[string]interface{} {
+	if s.guardrails == nil {
+		return map[string]interface{}{"enabled": false}
+	}
+	cfg := s.guardrails.Cfg()
+	return map[string]interface{}{
+		"enabled":                    true,
+		"redactor_enabled":           cfg.EnableRedactor,
+		"injection_scanner_enabled":  cfg.EnableInjectionScanner,
+		"max_tool_calls_per_session": cfg.MaxToolCallsPerSession,
 	}
 }
 
@@ -577,8 +706,12 @@ func (s *mcpServerImpl) createCostHandler(toolDef *tools.ToolDefinition) ToolHan
 // createExecutionHandler creates a handler for safety-gated execution tools.
 func (s *mcpServerImpl) createExecutionHandler(toolDef *tools.ToolDefinition) ToolHandler {
 	name := toolDef.Name
-	if execHandler, ok := s.executionTools.HandlerMap()[name]; ok {
+	timeout := executiontools.ExecutionTimeout(toolDef.RequiredAutonomyLevel)
+
+	if execHandler, ok := s.executionTools.HardenedHandlerMap()[name]; ok {
 		return func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
 			return execHandler(ctx, args)
 		}
 	}

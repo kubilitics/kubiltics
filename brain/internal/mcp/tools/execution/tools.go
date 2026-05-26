@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/vellankikoti/kubilitics/brain/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/metrics"
 	"github.com/vellankikoti/kubilitics/brain/internal/safety"
 )
 
@@ -40,9 +42,10 @@ type SafetyEvaluator interface {
 
 // ExecutionTools holds all execution tool implementations.
 type ExecutionTools struct {
-	http     HTTPExecutor
-	safety   SafetyEvaluator
-	auditLog audit.Logger
+	http            HTTPExecutor
+	safety          SafetyEvaluator
+	auditLog        audit.Logger
+	idempotencyGuard *IdempotencyGuard
 }
 
 // NewExecutionTools creates a new ExecutionTools instance using the backend base URL.
@@ -54,13 +57,24 @@ func NewExecutionTools(backendBaseURL string, safetyEngine *safety.Engine, audit
 // dependencies (used in tests).
 func NewExecutionToolsWithDeps(httpExec HTTPExecutor, safetyEval SafetyEvaluator, auditLog audit.Logger) *ExecutionTools {
 	return &ExecutionTools{
-		http:     httpExec,
-		safety:   safetyEval,
-		auditLog: auditLog,
+		http:            httpExec,
+		safety:          safetyEval,
+		auditLog:        auditLog,
+		idempotencyGuard: NewIdempotencyGuard(60 * time.Second),
 	}
 }
 
-// HandlerMap returns all tool handlers keyed by tool name.
+// NewExecutionToolsWithGuard creates an instance with a custom IdempotencyGuard (for tests).
+func NewExecutionToolsWithGuard(httpExec HTTPExecutor, safetyEval SafetyEvaluator, auditLog audit.Logger, guard *IdempotencyGuard) *ExecutionTools {
+	return &ExecutionTools{
+		http:            httpExec,
+		safety:          safetyEval,
+		auditLog:        auditLog,
+		idempotencyGuard: guard,
+	}
+}
+
+// HandlerMap returns all tool handlers keyed by tool name (raw, no middleware).
 func (t *ExecutionTools) HandlerMap() map[string]func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	return map[string]func(ctx context.Context, args map[string]interface{}) (interface{}, error){
 		"restart_pod":            t.RestartPod,
@@ -73,6 +87,75 @@ func (t *ExecutionTools) HandlerMap() map[string]func(ctx context.Context, args 
 		"update_resource_limits": t.UpdateResourceLimits,
 		"trigger_hpa_scale":      t.TriggerHPAScale,
 	}
+}
+
+// autonomyLevels maps each execution tool to its RequiredAutonomyLevel from taxonomy.
+var autonomyLevels = map[string]int{
+	"restart_pod":            4,
+	"scale_deployment":       4,
+	"cordon_node":            4,
+	"drain_node":             4,
+	"apply_resource_patch":   4,
+	"delete_resource":        5,
+	"rollback_deployment":    4,
+	"update_resource_limits": 4,
+	"trigger_hpa_scale":      4,
+}
+
+// HardenedHandlerMap wraps every handler with the idempotency guard and
+// result envelope.  This is the map the MCP server uses in production.
+// Callers must also apply per-tool timeouts via ExecutionTimeout.
+func (t *ExecutionTools) HardenedHandlerMap() map[string]func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	raw := t.HandlerMap()
+	out := make(map[string]func(ctx context.Context, args map[string]interface{}) (interface{}, error), len(raw))
+
+	for toolName, handler := range raw {
+		toolName := toolName   // capture for closure
+		handler := handler
+		level := autonomyLevels[toolName]
+
+		out[toolName] = func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+			// Idempotency guard — reject duplicate ops within 60 s.
+			if err := t.idempotencyGuard.Check(toolName, args); err != nil {
+				metrics.IdempotencyHits.WithLabelValues(toolName).Inc()
+				return nil, err
+			}
+
+			start := time.Now()
+			result, err := handler(ctx, args)
+			elapsed := time.Since(start)
+
+			if err != nil {
+				// Distinguish deadline-exceeded from other errors for observability.
+				if errors.Is(err, context.DeadlineExceeded) {
+					metrics.ExecutionTimeouts.WithLabelValues(toolName).Inc()
+				}
+				return nil, err
+			}
+
+			// Only arm the guard on actual live executions (not dry-runs or denials).
+			idempotencyKey := idempotencyKey(toolName, args)
+			isDryRun := false
+			if m, ok := result.(map[string]interface{}); ok {
+				isDryRun, _ = m["dry_run"].(bool)
+				approved, _ := m["approved"].(bool)
+				if approved && !isDryRun {
+					t.idempotencyGuard.Record(toolName, args)
+				}
+			}
+
+			return withExecutionEnvelope(
+				toolName,
+				audit.GenerateCorrelationID(),
+				level,
+				elapsed,
+				idempotencyKey,
+				!isDryRun,
+				result,
+			), nil
+		}
+	}
+	return out
 }
 
 // ─── safetyCheck is the common safety gate ────────────────────────────────────
@@ -749,6 +832,12 @@ func (t *ExecutionTools) TriggerHPAScale(ctx context.Context, args map[string]in
 type defaultHTTPExecutor struct {
 	baseURL    string
 	httpClient *http.Client
+}
+
+// NewDefaultHTTPExecutorForTest exposes the real HTTP executor for integration
+// testing with httptest.Server.  Production callers use NewExecutionTools.
+func NewDefaultHTTPExecutorForTest(baseURL string) HTTPExecutor {
+	return newDefaultHTTPExecutor(baseURL)
 }
 
 func newDefaultHTTPExecutor(baseURL string) *defaultHTTPExecutor {
