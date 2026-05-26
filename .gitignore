@@ -228,3 +228,4 @@ kubilitics-backend/test_output.txt
 
 # Stub binaries used by manual smoke tests
 kubilitics-backend/internal/ai/aiclient/testdata/stub-kubilitics-ai/stub-kubilitics-ai
+brain/certify-tools
