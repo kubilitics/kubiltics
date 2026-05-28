@@ -100,7 +100,10 @@ func (c *editorExecCommand) Run() error {
 	tmp.Close()
 
 	// 3. Open $EDITOR.
-	editor := resolveEditor()
+	editor, err := resolveEditor()
+	if err != nil {
+		return fmt.Errorf("edit: %w", err)
+	}
 	editorCmd := exec.Command(editor, tmpPath)
 	editorCmd.Stdin = c.stdin
 	editorCmd.Stdout = c.stdout
@@ -144,15 +147,23 @@ func (c *editorExecCommand) Run() error {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// resolveEditor returns the editor to use, respecting $VISUAL > $EDITOR > vi.
-func resolveEditor() string {
-	if e := strings.TrimSpace(os.Getenv("VISUAL")); e != "" {
-		return e
+// resolveEditor returns the validated editor binary path, respecting $VISUAL > $EDITOR > vi.
+// exec.LookPath is used to verify the binary exists before handing it to exec.Command.
+func resolveEditor() (string, error) {
+	for _, env := range []string{"VISUAL", "EDITOR"} {
+		if e := strings.TrimSpace(os.Getenv(env)); e != "" {
+			path, err := exec.LookPath(e)
+			if err != nil {
+				return "", fmt.Errorf("editor %q from $%s not found: %w", e, env, err)
+			}
+			return path, nil
+		}
 	}
-	if e := strings.TrimSpace(os.Getenv("EDITOR")); e != "" {
-		return e
+	path, err := exec.LookPath("vi")
+	if err != nil {
+		return "", fmt.Errorf("fallback editor 'vi' not found: %w", err)
 	}
-	return "vi"
+	return path, nil
 }
 
 // buildScopedArgs prepends kubeconfig/context flags to args (no namespace).

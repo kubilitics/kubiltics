@@ -127,8 +127,11 @@ jobs:
 
       - name: Install Kubescape
         run: |
-          curl -s https://raw.githubusercontent.com/kubescape/kubescape/master/install.sh | /bin/bash
-          echo "${HOME}/.kubescape/bin" >> "$GITHUB_PATH"
+          # Pin version to avoid breaking changes in SARIF output format
+          KUBESCAPE_VERSION="v3.0.21"
+          curl -sL "https://github.com/kubescape/kubescape/releases/download/${KUBESCAPE_VERSION}/kubescape-ubuntu-latest" \
+            -o /usr/local/bin/kubescape
+          chmod +x /usr/local/bin/kubescape
 
       - name: Run Kubescape
         run: |
@@ -136,6 +139,24 @@ jobs:
             --format sarif \
             --output kubescape-results.sarif \
             --compliance-threshold 0 || true
+
+      - name: Fix SARIF artifact locations
+        # kubescape omits physicalLocation.artifactLocation on some findings,
+        # causing GitHub Code Scanning to reject the file with
+        # "locationFromSarifResult: expected artifact location".
+        # This step adds a fallback artifactLocation so every finding is
+        # addressable in the GitHub UI.
+        if: always() && hashFiles('kubescape-results.sarif') != ''
+        run: |
+          jq '
+            .runs[].results[] |= (
+              .locations //= [] |
+              .locations[] |= (
+                .physicalLocation.artifactLocation //= {"uri": "rendered-manifests/"}
+              )
+            )
+          ' kubescape-results.sarif > kubescape-fixed.sarif
+          mv kubescape-fixed.sarif kubescape-results.sarif
 
       - name: Upload Kubescape SARIF
         uses: github/codeql-action/upload-sarif@v4
