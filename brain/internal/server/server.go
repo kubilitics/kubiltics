@@ -711,7 +711,8 @@ func (s *Server) handleAdminBudgetStatus(w http.ResponseWriter, r *http.Request)
 	s.mu.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
 	if rtSrv == nil || rtSrv.BudgetGate() == nil {
-		_, _ = w.Write([]byte(`{"spent_usd":0,"cap_usd":0}`))
+		// nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte(`{"spent_usd":0,"cap_usd":0}`)) // static JSON — not user input
 		return
 	}
 	g := rtSrv.BudgetGate()
@@ -724,7 +725,8 @@ func (s *Server) handleAdminBudgetStatus(w http.ResponseWriter, r *http.Request)
 		cap = cr.Cap()
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]float64{"spent_usd": spent, "cap_usd": cap})
+	// nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
+	_ = json.NewEncoder(w).Encode(map[string]float64{"spent_usd": spent, "cap_usd": cap}) //nolint:errcheck
 }
 
 // handleAdminBudgetReset zeroes the gate accumulator.
@@ -755,7 +757,8 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 	llmConfigured := s.config.LLM.Configured
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	// nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
+	_ = json.NewEncoder(w).Encode(map[string]any{ //nolint:errcheck
 		"status":         "healthy",
 		"llm_configured": llmConfigured,
 		"llm_provider":   s.config.LLM.Provider,
@@ -779,10 +782,12 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if !ready {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "not_ready"})
+		// nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "not_ready"}) //nolint:errcheck
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	// nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
+	_ = json.NewEncoder(w).Encode(map[string]string{ //nolint:errcheck
 		"status":    "ready",
 		"timestamp": time.Now().Format(time.RFC3339),
 	})
@@ -796,7 +801,8 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	// nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
+	_ = json.NewEncoder(w).Encode(map[string]any{ //nolint:errcheck
 		"name":                   "Kubilitics AI",
 		"version":                "0.1.0",
 		"llm_provider":           s.config.LLM.Provider,
